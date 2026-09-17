@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunday School Class Assignments</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #001a4d 0%, #003d7a 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 1.5em;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .group-leader {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.7em;
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: normal;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h3 {
+            color: #003d7a;
+            font-size: 1.5em;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #003d7a;
+            padding-bottom: 8px;
+        }
+
+        .card-time {
+            color: #003d7a;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-time::before {
+            content: "🕐";
+            font-size: 1.2em;
+        }
+
+        .card-location {
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-location::before {
+            content: "📍";
+            font-size: 1.2em;
+        }
+
+        .servants-list {
+            color: #333;
+        }
+
+        .servants-list strong {
+            display: block;
+            color: #003d7a;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .servants-list strong:first-of-type {
+            margin-top: 0;
+        }
+
+        .servant {
+            padding: 6px 0;
+            color: #555;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .servant::before {
+            content: "✝ ";
+            color: #003d7a;
+            margin-right: 6px;
+        }
+
+        .empty {
+            color: #999;
+            font-style: italic;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            body {
+                padding: 20px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✝ St. Abraam Sunday School Servants ✝</h1>
+            <p>Service Assignments 2026–2027</p>
+        </div>
+
+        <!-- YOUNGER CLASSES -->
+        <div class="section">
+            <h2 class="section-title">Younger Classes<div class="group-leader">Group Leaders: Tamer Barsoum & Yvon Metri</div></h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>Special Needs</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">Bookstore</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Adel Ayyad</div>
+                        <div class="servant">Robert Gaied</div>
+                        <div class="servant">Josephine Youssef</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Nursery</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. Matthew</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Nancy Wassif</div>
+                        <div class="servant">Shery Ghobrial</div>
+                        <div class="servant">Hala Shaker</div>
+                        <div class="servant">Mary Youssef (Y)</div>
+                        <div class="servant">Dina Samy</div>
+                        <div class="servant">Faith Fahmy</div>
+                        <div class="servant">Walaa</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>PreK</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. Mina (Small Room)</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Nermin Mouris</div>
+                        <div class="servant">Hanan Habeb</div>
+                        <div class="servant">Sana Hosny</div>
+                        <div class="servant">Amira Beshay</div>
+                        <div class="servant">Joly Fawzy</div>
+                        <div class="servant">Angelica Hanna</div>
+                        <div class="servant">Natalie Leyon</div>
+                        <div class="servant">Helen Salib</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Kindergarten</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. Mina</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Eman Saroufim</div>
+                        <div class="servant">Phoebe Daoud</div>
+                        <div class="servant">Bella Morcos</div>
+                        <div class="servant">Mariam Abdallah</div>
+                        <div class="servant">Maidi Ghali</div>
+                        <div class="servant">Manar Nagy</div>
+                        <div class="servant">Clara Ibrahim</div>
+                        <div class="servant">Hope Fahmy</div>
+                        <div class="servant">Miriam Ibrahim</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>1st Grade</h3>
+                    <div class="card-time">12:15–1:00pm</div>
+                    <div class="card-location">St. Luke</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Tamer Barsoum</div>
+                        <div class="servant">Joanne Roufail</div>
+                        <div class="servant">Thomas Youssef (Y)</div>
+                        <div class="servant">Jois Basta</div>
+                        <div class="servant">Sofia Ayad</div>
+                        <div class="servant">Daniel Girgis</div>
+                        <div class="servant">Anthony Saad</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ELEMENTARY CLASSES -->
+        <div class="section">
+            <h2 class="section-title">Elementary Classes<div class="group-leader">Group Leader: Mina Ibrahim</div></h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>2nd/3rd Grade</h3>
+                    <div class="card-time">12:15–1:00pm</div>
+                    <div class="card-location">St. Mark</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Joy Gad</div>
+                        <div class="servant">Raphael Ghobrial</div>
+                        <div class="servant">Mina Ibrahim</div>
+                        <div class="servant">Mayan Amin</div>
+                        <div class="servant">Tony Ibrahim</div>
+                        <div class="servant">Mark Kamel</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>4th Grade</h3>
+                    <div class="card-time">12:15–1:00pm</div>
+                    <div class="card-location">St. John</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Sera Youssef</div>
+                        <div class="servant">Marlin Stier</div>
+                        <div class="servant">Nicholas Azab</div>
+                        <div class="servant">Christian Mikhail</div>
+                        <div class="servant">Mina-Abanoub Sobhy</div>
+                        <div class="servant">Nancy Moussa</div>
+                        <div class="servant">Raphael Bekhit</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>5th Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. Mark</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Mary Girgis-Ibrahim</div>
+                        <div class="servant">Heba Samaan</div>
+                        <div class="servant">Marian Ghabious</div>
+                        <div class="servant">Gregory Botros</div>
+                        <div class="servant">Christie Azer</div>
+                        <div class="servant">Kevin Boktor</div>
+                        <div class="servant">Beshoy Takla</div>
+                        <div class="servant">Jolie Nessim</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDDLE SCHOOL CLASSES -->
+        <div class="section">
+            <h2 class="section-title">Middle School Classes<div class="group-leader">Group Leaders: 8th Grade Servants</div></h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>6th Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. Luke</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Kirollos</div>
+                        <div class="servant">Mary Youssef</div>
+                        <div class="servant">Mariam Guirguis</div>
+                        <div class="servant">Angela Loka</div>
+                        <div class="servant">Souly Amin</div>
+                        <div class="servant">Kevin Luke</div>
+                        <div class="servant">Patrick Iskander</div>
+                        <div class="servant">Michael Morcos</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>7th Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">St. John</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Clarien Nashed</div>
+                        <div class="servant">Nardeen Loka</div>
+                        <div class="servant">Thomas Youssef</div>
+                        <div class="servant">Philomena Awadallah</div>
+                        <div class="servant">Katherine Mikhail</div>
+                        <div class="servant">Justine Benjamin</div>
+                        <div class="servant">George Demian</div>
+                        <div class="servant">Karim Ayoub</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>8th Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">Basement</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Bassem Tawadros</div>
+                        <div class="servant">John Youssef</div>
+                        <div class="servant">Alexis Elias</div>
+                        <div class="servant">David Ibrahim</div>
+                        <div class="servant">Joanna Wassif</div>
+                        <div class="servant">Mariz Baslious</div>
+                        <div class="servant">Mina Badawy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- YOUTH CLASSES -->
+        <div class="section">
+            <h2 class="section-title">Youth Classes</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>High School</h3>
+                    <div class="card-time">8:30–9:30pm</div>
+                    <div class="card-location">Basement</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Abanoub Wahba</div>
+                        <div class="servant">Akram Iskander</div>
+                        <div class="servant">Andrew Habashy</div>
+                        <div class="servant">Bianca Ibrahim</div>
+                        <div class="servant">Eric Khairy</div>
+                        <div class="servant">Maria Mikhaeil</div>
+                        <div class="servant">Mark Moawad</div>
+                        <div class="servant">Mary Girgis</div>
+                        <div class="servant">Michael Hanna</div>
+                        <div class="servant">Monica Fam</div>
+                        <div class="servant">Nardin Wesa</div>
+                        <div class="servant">Peter Metias</div>
+                        <div class="servant">Nardine Abdelmessih</div>
+                        <div class="servant">Suzy Ghabious</div>
+                        <div class="servant">Trevina Metyas</div>
+                        <div class="servant">Emad Girgis</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>College</h3>
+                    <div class="card-time">8:30–9:30pm</div>
+                    <div class="card-location">St. Mina</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Bishoy Botros</div>
+                        <div class="servant">Jackie Touma</div>
+                        <div class="servant">Mariam Hanna</div>
+                        <div class="servant">Stephanie Moawad</div>
+                        <div class="servant">Andrew Loka</div>
+                        <div class="servant">Nick Azab</div>
+                        <div class="servant">Chrissy Mikhail</div>
+                        <div class="servant">Christine Garas</div>
+                        <div class="servant">Chris Banoub</div>
+                        <div class="servant">Heather Banoub</div>
+                        <div class="servant">Angela Basaly</div>
+                        <div class="servant">Ramy Abouseif</div>
+                        <div class="servant">Mike Moawad</div>
+                        <div class="servant">Sarah Moawad</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Preservants</h3>
+                    <div class="card-time">11:30am–1:15pm</div>
+                    <div class="card-location">House</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Nazeeh Hanna</div>
+                        <div class="servant">Phoebe Metri</div>
+                        <div class="servant">Rania Megalla</div>
+                        <div class="servant">Tamer Riad</div>
+                        <div class="servant">Dina Chenouda</div>
+                        <div class="servant">Isis Zareif</div>
+                        <div class="servant">Suzy Fahmy</div>
+                        <div class="servant">Jemmy Rezk</div>
+                        <div class="servant">Trephyna Zareif</div>
+                        <div class="servant">Philip Iskander</div>
+                        <div class="servant">Mariam Hanna</div>
+                        <div class="servant">Iman Hanna</div>
+                        <div class="servant">Eman Aknoukh</div>
+                        <div class="servant">Josephine Hanna</div>
+                        <div class="servant">Merna Magdi</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>TAS</h3>
+                    <div class="card-time">11:40–12:10pm</div>
+                    <div class="card-location">Gym</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Mareena Botros</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HYMNS CLASSES -->
+        <div class="section">
+            <h2 class="section-title">Hymns Classes</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>PreK & Kindergarten</h3>
+                    <div class="card-time">12:15–1:00pm</div>
+                    <div class="card-location">Upstairs Crying Room</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Gabby Azab</div>
+                        <div class="servant">Lydia</div>
+                        <div class="servant">Michael Morcos</div>
+                        <div class="servant">Chris Luke</div>
+                        <div class="servant">Mina Abanoub Sobhy</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>1st–2nd Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">Crying Room 2</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Mina Ibrahim</div>
+                        <div class="servant">Gregory Botros</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>3rd–4th Grade</h3>
+                    <div class="card-time">11:30–12:15pm</div>
+                    <div class="card-location">Downstairs Church</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Fadia Aknouk</div>
+                        <div class="servant">Mora Wadee</div>
+                        <div class="servant">Raphy Ghobrial</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>5th–8th Grade</h3>
+                    <div class="card-time">12:15–1:00pm</div>
+                    <div class="card-location">Downstairs Church</div>
+                    <div class="servants-list">
+                        <strong>Servants:</strong>
+                        <div class="servant">Emad Mikhaeil</div>
+                        <div class="servant">Patrick Iskander</div>
+                        <div class="servant">Justin Soliman</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AUXILIARY SERVANTS -->
+        <div class="section">
+            <h2 class="section-title">Auxiliary Servants</h2>
+            <div class="card" style="max-width: 100%;">
+                <p style="color: #666; font-size: 0.95em; line-height: 1.6; margin-bottom: 20px;">
+                    Auxiliary servants are those who, due to studies, living or studying away from the church, or other life circumstances, may not be able to commit to regular weekly service. They remain part of our servants community and are always welcome to serve during Spiritual Days, Mahragan, Summer Camp, retreats, and other special events.
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div class="servant">Cathy Ibrahim</div>
+                    <div class="servant">Daniel Shohdy</div>
+                    <div class="servant">Evrocina Hanna</div>
+                    <div class="servant">Gabby Azab</div>
+                    <div class="servant">Giovanna</div>
+                    <div class="servant">Jesse Awadallah</div>
+                    <div class="servant">Karen Habib</div>
+                    <div class="servant">Kathryn Habib</div>
+                    <div class="servant">Mariam Ayyad</div>
+                    <div class="servant">Marina Moussa</div>
+                    <div class="servant">Marla Hakim</div>
+                    <div class="servant">Verena ElDeiry</div>
+                    <div class="servant">Verina Anis</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
