@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunday School Ideas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #001a4d 0%, #003d7a 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 25px;
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            font-size: 0.95em;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .panel h2 {
+            color: #003d7a;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .form-row label {
+            display: block;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #003d7a;
+        }
+
+        .btn {
+            background-color: #003d7a;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #002a55;
+        }
+
+        .btn-secondary {
+            background-color: #eee;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background-color: #ddd;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-select {
+            max-width: 220px;
+        }
+
+        .idea-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .idea-card .idea-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .idea-card h3 {
+            color: #003d7a;
+            font-size: 1.1em;
+        }
+
+        .idea-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 0.75em;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-category {
+            background-color: #99ccff;
+            color: #002a55;
+        }
+
+        .tag-age {
+            background-color: #ffe08a;
+            color: #5a4400;
+        }
+
+        .idea-notes {
+            color: #444;
+            font-size: 0.95em;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .idea-date {
+            color: #999;
+            font-size: 0.75em;
+            margin-top: 10px;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #c0392b;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            padding: 4px 8px;
+        }
+
+        .delete-btn:hover {
+            text-decoration: underline;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.6em;
+            }
+
+            body {
+                padding: 20px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a class="back-link" href="index.html">&larr; Back to Assignments</a>
+
+        <div class="header">
+            <h1>Sunday School Ideas</h1>
+            <p>A running list of lesson, craft, and activity ideas</p>
+        </div>
+
+        <div class="panel">
+            <h2>Add an Idea</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="idea-title">Title</label>
+                    <input type="text" id="idea-title" placeholder="e.g. Parable of the Sower craft">
+                </div>
+                <div class="form-group">
+                    <label for="idea-category">Category</label>
+                    <select id="idea-category">
+                        <option value="Lesson">Lesson</option>
+                        <option value="Craft">Craft</option>
+                        <option value="Game">Game</option>
+                        <option value="Song/Hymn">Song/Hymn</option>
+                        <option value="Field Trip">Field Trip</option>
+                        <option value="Discussion">Discussion</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="idea-age">Age Group</label>
+                    <select id="idea-age">
+                        <option value="Any">Any</option>
+                        <option value="Nursery/PreK">Nursery/PreK</option>
+                        <option value="Younger (K-1st)">Younger (K-1st)</option>
+                        <option value="Elementary (2nd-5th)">Elementary (2nd-5th)</option>
+                        <option value="Middle School (6th-8th)">Middle School (6th-8th)</option>
+                        <option value="Youth (HS/College)">Youth (HS/College)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="idea-notes">Notes</label>
+                    <textarea id="idea-notes" placeholder="Details, materials needed, links, etc."></textarea>
+                </div>
+            </div>
+            <button class="btn" id="add-btn">Add Idea</button>
+        </div>
+
+        <div class="toolbar">
+            <select id="filter-category" class="filter-select">
+                <option value="">All Categories</option>
+                <option value="Lesson">Lesson</option>
+                <option value="Craft">Craft</option>
+                <option value="Game">Game</option>
+                <option value="Song/Hymn">Song/Hymn</option>
+                <option value="Field Trip">Field Trip</option>
+                <option value="Discussion">Discussion</option>
+                <option value="Other">Other</option>
+            </select>
+            <div class="toolbar-actions">
+                <button class="btn btn-secondary" id="export-btn">Export as Markdown</button>
+            </div>
+        </div>
+
+        <div id="ideas-list"></div>
+        <div id="empty-state" class="empty-state" style="display:none;">No ideas yet — add your first one above!</div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'sundaySchoolIdeas';
+
+        function loadIdeas() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveIdeas(ideas) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+            } catch (e) {
+                // storage unavailable; ideas will only persist for this page view
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function render() {
+            const ideas = loadIdeas();
+            const filter = document.getElementById('filter-category').value;
+            const list = document.getElementById('ideas-list');
+            const emptyState = document.getElementById('empty-state');
+
+            const filtered = filter ? ideas.filter(i => i.category === filter) : ideas;
+            const sorted = [...filtered].sort((a, b) => b.createdAt - a.createdAt);
+
+            list.innerHTML = '';
+
+            if (sorted.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            sorted.forEach(idea => {
+                const card = document.createElement('div');
+                card.className = 'idea-card';
+                const dateStr = new Date(idea.createdAt).toLocaleDateString();
+                card.innerHTML = `
+                    <div class="idea-top">
+                        <h3>${escapeHtml(idea.title)}</h3>
+                        <button class="delete-btn" data-id="${idea.id}">Delete</button>
+                    </div>
+                    <div class="idea-tags">
+                        <span class="tag tag-category">${escapeHtml(idea.category)}</span>
+                        <span class="tag tag-age">${escapeHtml(idea.age)}</span>
+                    </div>
+                    ${idea.notes ? `<div class="idea-notes">${escapeHtml(idea.notes)}</div>` : ''}
+                    <div class="idea-date">Added ${dateStr}</div>
+                `;
+                list.appendChild(card);
+            });
+
+            list.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-id');
+                    const remaining = loadIdeas().filter(i => String(i.id) !== id);
+                    saveIdeas(remaining);
+                    render();
+                });
+            });
+        }
+
+        document.getElementById('add-btn').addEventListener('click', () => {
+            const title = document.getElementById('idea-title').value.trim();
+            const category = document.getElementById('idea-category').value;
+            const age = document.getElementById('idea-age').value;
+            const notes = document.getElementById('idea-notes').value.trim();
+
+            if (!title) {
+                document.getElementById('idea-title').focus();
+                return;
+            }
+
+            const ideas = loadIdeas();
+            ideas.push({
+                id: Date.now(),
+                title,
+                category,
+                age,
+                notes,
+                createdAt: Date.now()
+            });
+            saveIdeas(ideas);
+
+            document.getElementById('idea-title').value = '';
+            document.getElementById('idea-notes').value = '';
+            document.getElementById('idea-title').focus();
+
+            render();
+        });
+
+        document.getElementById('filter-category').addEventListener('change', render);
+
+        document.getElementById('export-btn').addEventListener('click', () => {
+            const ideas = [...loadIdeas()].sort((a, b) => a.createdAt - b.createdAt);
+            let md = '# Sunday School Ideas\n\n';
+            if (ideas.length === 0) {
+                md += '_No ideas yet._\n';
+            } else {
+                ideas.forEach(idea => {
+                    md += `## ${idea.title}\n`;
+                    md += `- Category: ${idea.category}\n`;
+                    md += `- Age Group: ${idea.age}\n`;
+                    md += `- Added: ${new Date(idea.createdAt).toLocaleDateString()}\n`;
+                    if (idea.notes) {
+                        md += `\n${idea.notes}\n`;
+                    }
+                    md += '\n';
+                });
+            }
+
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sunday-school-ideas.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        render();
+    </script>
+</body>
+</html>
