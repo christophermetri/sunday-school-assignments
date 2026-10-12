@@ -1,18 +1,8 @@
-# Dependencies
 node_modules/
-package-lock.json
-yarn.lock
-
-# Environment variables
+credentials.json
+token.json
 .env
 .env.local
-.env.*.local
-
-# Credentials
-service-account-key.json
-credentials.json
-
-# Logs
 logs/
 *.log
 npm-debug.log*
@@ -22,16 +12,7 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Testing
-.nyc_output/
-coverage/
-
-# Build
-dist/
-build/

@@ -1,181 +1,156 @@
-/**
- * Google APIs utilities for Drive, Sheets, and Gmail integration
- */
-
 const { google } = require('googleapis');
-const { auth } = require('google-auth-library');
 const fs = require('fs');
 const path = require('path');
 
-let authClient = null;
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://mail.google.com/'
+];
 
-/**
- * Initialize Google Auth (uses Application Default Credentials)
- */
+const TOKEN_PATH = path.join(__dirname, 'token.json');
+const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
+
+let auth = null;
+
 async function initializeAuth() {
   try {
-    // Try to use Application Default Credentials
-    const auth = new (require('google-auth-library')).GoogleAuth({
-      scopes: [
-        'https://www.googleapis.com/auth/drive.readonly',
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/gmail.send'
-      ]
-    });
+    // Load client credentials from OAuth setup
+    const credentialsContent = fs.readFileSync(CREDENTIALS_PATH, 'utf8');
+    const credentials = JSON.parse(credentialsContent);
+    
+    const { client_id, client_secret, redirect_uris } = credentials.installed;
+    
+    const oauth2Client = new google.auth.OAuth2(
+      client_id,
+      client_secret,
+      redirect_uris[0]
+    );
 
-    authClient = await auth.getClient();
-    console.log('✓ Google Auth initialized (ADC)');
-    return authClient;
+    // Check if we have saved tokens
+    if (fs.existsSync(TOKEN_PATH)) {
+      const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+      oauth2Client.setCredentials(token);
+      auth = oauth2Client;
+      console.log('✅ Using saved OAuth tokens');
+      return oauth2Client;
+    }
+
+    // If no token, need to authenticate
+    console.log('⚠️ No saved tokens. Need to authenticate first.');
+    console.log('Run: node authenticate.js');
+    throw new Error('Please run authenticate.js first to authorize the app');
   } catch (error) {
-    console.error('Error initializing Google Auth:', error.message);
-    throw new Error('Failed to initialize Google authentication. Ensure GOOGLE_APPLICATION_CREDENTIALS is set.');
+    console.error('❌ Auth Error:', error.message);
+    throw error;
   }
 }
 
-/**
- * Get the latest PDF from Google Drive folder
- */
-async function getLatestPdfFromDrive(folderId) {
+async function getLatestPdfFromDrive() {
   try {
-    const drive = google.drive({ version: 'v3', auth: authClient });
+    const drive = google.drive({ version: 'v3', auth });
+    const FOLDER_ID = require('./config').DRIVE_FOLDER_ID;
 
-    const result = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType='application/pdf' and trashed=false`,
-      pageSize: 10,
-      fields: 'files(id, name, modifiedTime, webContentLink)',
-      orderBy: 'modifiedTime desc'
+    const response = await drive.files.list({
+      q: `'${FOLDER_ID}' in parents and mimeType='application/pdf' and trashed=false`,
+      spaces: 'drive',
+      fields: 'files(id, name, createdTime)',
+      orderBy: 'createdTime desc',
+      pageSize: 1,
     });
 
-    if (!result.data.files || result.data.files.length === 0) {
-      console.log('No PDFs found in folder');
+    if (response.data.files.length === 0) {
       return null;
     }
 
-    const latestFile = result.data.files[0];
-    console.log(`✓ Found latest PDF: ${latestFile.name}`);
-    return latestFile;
+    return response.data.files[0];
   } catch (error) {
-    console.error('Error accessing Google Drive:', error.message);
+    console.error('❌ Error fetching PDF from Drive:', error.message);
     throw error;
   }
 }
 
-/**
- * Download PDF file from Google Drive
- */
 async function downloadPdfFromDrive(fileId) {
   try {
-    const drive = google.drive({ version: 'v3', auth: authClient });
-
-    const res = await drive.files.get(
-      { fileId: fileId, alt: 'media' },
-      { responseType: 'stream' }
+    const drive = google.drive({ version: 'v3', auth });
+    const response = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
     );
-
-    console.log(`✓ Downloaded PDF content for file ID: ${fileId}`);
-    return res.data;
+    return Buffer.from(response.data);
   } catch (error) {
-    console.error('Error downloading PDF:', error.message);
+    console.error('❌ Error downloading PDF:', error.message);
     throw error;
   }
 }
 
-/**
- * Update Google Sheet with absence data
- */
-async function updateAttendanceSheet(sheetId, data) {
+async function updateAttendanceSheet(data) {
   try {
-    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const SHEETS_ID = require('./config').SHEETS_ID;
 
-    // Prepare values for sheet update
-    const values = data.map(row => [
-      row.date,
-      row.className,
-      row.servantName,
-      row.wasAbsent ? 'YES' : 'NO',
-      row.consecutiveWeeks || 0,
-      row.notes || ''
-    ]);
+    const values = [
+      [new Date().toISOString(), JSON.stringify(data)]
+    ];
 
-    const result = await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'Absences!A:F',
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: values
-      }
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEETS_ID,
+      range: 'Sheet1!A:B',
+      valueInputOption: 'RAW',
+      resource: { values }
     });
 
-    console.log(`✓ Updated sheet: ${result.data.updates.updatedRows} rows added`);
-    return result.data;
+    console.log('✅ Data saved to Google Sheet');
   } catch (error) {
-    console.error('Error updating sheet:', error.message);
+    console.error('❌ Error updating sheet:', error.message);
     throw error;
   }
 }
 
-/**
- * Get current absence data from Google Sheet
- */
-async function getAbsenceHistory(sheetId) {
+async function getAbsenceHistory() {
   try {
-    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const SHEETS_ID = require('./config').SHEETS_ID;
 
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: 'Absences!A:F'
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEETS_ID,
+      range: 'Sheet1!A:B'
     });
 
-    const rows = result.data.values || [];
-    console.log(`✓ Retrieved ${rows.length} rows from sheet`);
-
-    // Parse into usable format
-    const absenceMap = {};
-    for (let i = 1; i < rows.length; i++) { // Skip header
-      const [date, className, servantName, wasAbsent, consecutiveWeeks] = rows[i];
-      if (servantName) {
-        absenceMap[servantName] = {
-          date,
-          className,
-          wasAbsent: wasAbsent === 'YES',
-          consecutiveWeeks: parseInt(consecutiveWeeks) || 0
-        };
-      }
-    }
-
-    return absenceMap;
+    return response.data.values || [];
   } catch (error) {
-    console.error('Error retrieving absence history:', error.message);
+    console.error('❌ Error reading sheet:', error.message);
     throw error;
   }
 }
 
-/**
- * Send email via Gmail
- */
-async function sendEmail(to, subject, htmlBody) {
+async function sendEmail(to, subject, htmlContent) {
   try {
-    const gmail = google.gmail({ version: 'v1', auth: authClient });
+    const gmail = google.gmail({ version: 'v1', auth });
+    const { EMAIL_FROM } = require('./config');
 
-    const message = {
-      raw: Buffer.from(
-        `From: stabraammain@gmail.com\r\n` +
-        `To: ${to}\r\n` +
-        `Subject: ${subject}\r\n` +
-        `Content-Type: text/html; charset="UTF-8"\r\n\r\n` +
-        htmlBody
-      ).toString('base64')
-    };
+    const emailMessage = [
+      `From: ${EMAIL_FROM}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      htmlContent
+    ].join('\n');
 
-    const result = await gmail.users.messages.send({
+    const encodedMessage = Buffer.from(emailMessage).toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    await gmail.users.messages.send({
       userId: 'me',
-      resource: message
+      resource: { raw: encodedMessage }
     });
 
-    console.log(`✓ Email sent successfully (Message ID: ${result.data.id})`);
-    return result.data;
+    console.log('✅ Email sent');
   } catch (error) {
-    console.error('Error sending email:', error.message);
+    console.error('❌ Error sending email:', error.message);
     throw error;
   }
 }
