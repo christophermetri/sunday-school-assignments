@@ -152,8 +152,10 @@ function parseReportDate(body) {
  */
 function parseRequestedGroups(body) {
   const text = String(body || '').replace(/&#39;|&apos;|&#8216;|&#8217;/g, "'").replace(/[‘’]/g, "'");
-  const m = /Groups:\s*([^\n]+)/i.exec(text);
-  const found = m ? m[1].split(/'\s*,\s*'|,/).map(s => cleanGroup(s.replace(/['"]/g, ''))).filter(Boolean) : [];
+  // The groups line is often wrapped across several lines in the plain-text body
+  const m = /Groups:\s*([\s\S]*?)(?:\n\s*\n|$)/i.exec(text);
+  const line = m ? m[1].replace(/\s*[\r\n]+\s*/g, ' ') : '';
+  const found = line.split(/'\s*,\s*'|,/).map(s => cleanGroup(s.replace(/['"]/g, ''))).filter(Boolean);
   const all = found.slice();
   CLASS_GROUPS.forEach(([, groups]) => groups.forEach(g => {
     if (!all.some(x => groupKey(x) === groupKey(g))) all.push(g);
