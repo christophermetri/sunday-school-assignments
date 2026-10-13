@@ -23,7 +23,7 @@ Edit `EMAIL_TO` at the top of `Code.gs` in the Apps Script editor (script.google
 Separate several addresses with commas.
 
 ## Manual runs (Apps Script editor)
-- `setup()` – one-time: creates the tabs and the hourly trigger.
+- `setup()` – one-time: creates the tabs and the hourly trigger, and logs any reports already in the inbox (without emailing).
 - `runLatestReport()` – re-processes the most recent report and re-sends the email.
 
 `Code.gs` here is the source of truth; paste it into the editor after changes.

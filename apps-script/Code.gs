@@ -61,8 +61,13 @@ function setup() {
     .filter(t => t.getHandlerFunction() === 'checkForNewReports')
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkForNewReports').timeBased().everyHours(1).create();
-  getOrCreateLabel_();
-  Logger.log('Setup complete. Hourly trigger installed.');
+
+  // Log any reports already in the inbox to History (no email), so streaks start counting from them.
+  const label = getOrCreateLabel_();
+  const threads = GmailApp.search(CONFIG.GMAIL_QUERY + ' -label:"' + CONFIG.PROCESSED_LABEL + '" newer_than:30d');
+  threads.forEach(t => t.getMessages().forEach(m => processMessage_(m, { sendEmail: false })));
+  threads.forEach(t => t.addLabel(label));
+  Logger.log('Setup complete. Hourly trigger installed. Back-filled ' + threads.length + ' report(s).');
 }
 
 function checkForNewReports() {
@@ -92,7 +97,8 @@ function runLatestReport() {
 
 /* ============================== Main pipeline ============================== */
 
-function processMessage_(message) {
+function processMessage_(message, options) {
+  const sendEmail = !(options && options.sendEmail === false);
   const body = message.getPlainBody();
   const reportDate = parseReportDate(body) || message.getDate();
   const dateKey = Utilities.formatDate(reportDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -116,6 +122,7 @@ function processMessage_(message) {
   addStreaks(result, history, dateKey);
   writeHistory_(historySheet, dateKey, result);
 
+  if (!sendEmail) return;
   const html = buildEmailHtml(result, reportDate, 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit');
   GmailApp.sendEmail(CONFIG.EMAIL_TO, 'Attendance for ' + formatLongDate_(reportDate), buildEmailText(result, reportDate), {
     htmlBody: html,
