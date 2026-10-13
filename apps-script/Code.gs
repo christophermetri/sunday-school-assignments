@@ -450,20 +450,17 @@ function buildEmailHtml(result, reportDate, sheetUrl) {
 
   let rows = '';
   if (result.notTaken.length) rows += section("Classes that didn't take attendance:", result.notTaken.map(escapeHtml));
-  let anyAbsent = false;
   result.classes.forEach(c => {
     const absent = c.servants.filter(s => s.status === 'Absent');
-    if (!absent.length) return;
-    anyAbsent = true;
+    if (!absent.length) {
+      rows += section(escapeHtml(c.cls) + ':', ['All servants attended']);
+      return;
+    }
     rows += section('Absent from ' + escapeHtml(c.cls) + ':', absent.map(s => {
       const note = streakNote(s.streak);
       return escapeHtml(s.servant) + (note ? ' <span style="color:' + M + ';font-weight:bold;">' + escapeHtml(note) + '</span>' : '');
     }));
   });
-  if (!anyAbsent) {
-    rows += '<tr><td style="padding:20px 24px 0 24px;background-color:' + CARD + ';color:' + TEXT + ';">' +
-      'Every servant in the classes that took attendance was present.</td></tr>';
-  }
 
   const missing = [];
   result.classes.forEach(c => c.servants.filter(s => s.status === 'Not found').forEach(s => missing.push(
@@ -505,7 +502,10 @@ function buildEmailText(result, reportDate) {
   }
   result.classes.forEach(c => {
     const absent = c.servants.filter(s => s.status === 'Absent');
-    if (!absent.length) return;
+    if (!absent.length) {
+      lines.push(c.cls + ':', '  * All servants attended', '');
+      return;
+    }
     lines.push('Absent from ' + c.cls + ':');
     absent.forEach(s => { const n = streakNote(s.streak); lines.push('  * ' + s.servant + (n ? ' ' + n : '')); });
     lines.push('');
