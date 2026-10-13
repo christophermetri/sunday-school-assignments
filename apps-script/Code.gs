@@ -40,7 +40,9 @@ const CLASS_GROUPS = [
   ['6th Grade', ['6th Grade']],
   ['7th Grade', ['7th Grade']],
   ['8th Grade', ['8th Grade']],
-  ['Preservants', ['Pre-servants Group 1', 'Pre-servants Group 2', 'Pre-servants Group 3']]
+  ['Preservants 1', ['Pre-servants Group 1']],
+  ['Preservants 2', ['Pre-servants Group 2']],
+  ['Preservants 3', ['Pre-servants Group 3']]
 ];
 
 const TAB_HISTORY = 'History';
