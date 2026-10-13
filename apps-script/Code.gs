@@ -439,44 +439,61 @@ function formatLongDate_(d) {
 }
 
 function buildEmailHtml(result, reportDate, sheetUrl) {
-  const M = CONFIG.MAROON, G = CONFIG.GOLD;
-  const h2 = t => '<h2 style="margin:22px 0 6px;font-size:16px;color:' + M + ';border-bottom:2px solid ' + G + ';padding-bottom:4px;">' + t + '</h2>';
-  const ul = items => '<ul style="margin:6px 0 0 0;padding-left:22px;">' +
-    items.map(i => '<li style="margin:3px 0;">' + i + '</li>').join('') + '</ul>';
+  // Built with tables, explicit backgrounds and a "light only" color scheme so phone mail apps
+  // in dark mode (e.g. iPhone Mail) show the real maroon/gold design instead of recoloring it.
+  const M = CONFIG.MAROON, G = CONFIG.GOLD, TEXT = '#222222', CARD = '#ffffff', PAGE = '#f4f1ea';
+  const section = (title, items) =>
+    '<tr><td style="padding:20px 24px 0 24px;background-color:' + CARD + ';">' +
+    '<div style="font-size:16px;font-weight:bold;color:' + M + ';border-bottom:2px solid ' + G + ';padding-bottom:5px;">' + title + '</div>' +
+    '<ul style="margin:10px 0 0 0;padding-left:22px;color:' + TEXT + ';">' +
+    items.map(i => '<li style="margin:4px 0;color:' + TEXT + ';">' + i + '</li>').join('') + '</ul></td></tr>';
 
-  let out = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;max-width:620px;">' +
-    '<div style="background:' + M + ';color:#fff;padding:16px 20px;border-bottom:4px solid ' + G + ';">' +
-    '<div style="font-size:12px;letter-spacing:1px;color:' + G + ';text-transform:uppercase;">St. Abraam Sunday School</div>' +
-    '<div style="font-size:22px;font-weight:bold;margin-top:4px;">Attendance for ' + formatLongDate_(reportDate) + '</div></div>' +
-    '<div style="padding:4px 20px 16px;">';
-
-  if (result.notTaken.length) {
-    out += h2("Classes that didn't take attendance:") + ul(result.notTaken.map(escapeHtml));
-  }
+  let rows = '';
+  if (result.notTaken.length) rows += section("Classes that didn't take attendance:", result.notTaken.map(escapeHtml));
   let anyAbsent = false;
   result.classes.forEach(c => {
     const absent = c.servants.filter(s => s.status === 'Absent');
     if (!absent.length) return;
     anyAbsent = true;
-    out += h2('Absent from ' + escapeHtml(c.cls) + ':') + ul(absent.map(s => {
+    rows += section('Absent from ' + escapeHtml(c.cls) + ':', absent.map(s => {
       const note = streakNote(s.streak);
       return escapeHtml(s.servant) + (note ? ' <span style="color:' + M + ';font-weight:bold;">' + escapeHtml(note) + '</span>' : '');
     }));
   });
-  if (!anyAbsent) out += '<p style="margin-top:20px;">Every servant in the classes that took attendance was present.</p>';
+  if (!anyAbsent) {
+    rows += '<tr><td style="padding:20px 24px 0 24px;background-color:' + CARD + ';color:' + TEXT + ';">' +
+      'Every servant in the classes that took attendance was present.</td></tr>';
+  }
 
   const missing = [];
   result.classes.forEach(c => c.servants.filter(s => s.status === 'Not found').forEach(s => missing.push(
     escapeHtml(s.servant) + ' — ' + escapeHtml(c.cls) +
-    (s.suggestions && s.suggestions.length ? ' <span style="color:#888;">(Church Teams has: ' + s.suggestions.map(escapeHtml).join('; ') + ')</span>' : ''))));
+    (s.suggestions && s.suggestions.length ? ' <span style="color:#777777;">(Church Teams has: ' + s.suggestions.map(escapeHtml).join('; ') + ')</span>' : ''))));
   if (missing.length) {
-    out += '<div style="margin-top:28px;padding:10px 14px;background:#f7f3e8;border-left:4px solid ' + G + ';font-size:12px;color:#555;">' +
-      '<b>Names to check</b> (not counted above): these servants are on the website but I couldn\'t find them on their class\'s Church Teams list. ' +
+    rows += '<tr><td style="padding:24px 24px 0 24px;background-color:' + CARD + ';">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+      '<td bgcolor="#f7f3e8" style="background-color:#f7f3e8;border-left:4px solid ' + G + ';padding:10px 14px;font-size:13px;color:#555555;">' +
+      '<b style="color:#333333;">Names to check</b> (not counted above): these servants are on the website but couldn\'t be found on their class\'s Church Teams list. ' +
       'Add their Church Teams spelling on the <a href="' + sheetUrl + '" style="color:' + M + ';">Name Fixes tab</a>, or write SKIP if they don\'t check in.' +
-      ul(missing) + '</div>';
+      '<ul style="margin:8px 0 0 0;padding-left:20px;color:#555555;">' + missing.map(i => '<li style="margin:3px 0;">' + i + '</li>').join('') + '</ul>' +
+      '</td></tr></table></td></tr>';
   }
-  out += '</div></div>';
-  return out;
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">' +
+    '<style>:root{color-scheme:light only;supported-color-schemes:light only;}</style></head>' +
+    '<body style="margin:0;padding:0;background-color:' + PAGE + ';">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' + PAGE + '" style="background-color:' + PAGE + ';">' +
+    '<tr><td align="center" style="padding:16px 8px;">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' + CARD + '" ' +
+    'style="max-width:620px;background-color:' + CARD + ';font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;color:' + TEXT + ';">' +
+    '<tr><td bgcolor="' + M + '" style="background-color:' + M + ';padding:18px 24px;border-bottom:4px solid ' + G + ';">' +
+    '<div style="font-size:12px;letter-spacing:1.5px;font-weight:bold;color:' + G + ';text-transform:uppercase;">St. Abraam Sunday School</div>' +
+    '<div style="font-size:22px;font-weight:bold;color:#ffffff;margin-top:4px;">Attendance for ' + formatLongDate_(reportDate) + '</div>' +
+    '</td></tr>' + rows +
+    '<tr><td style="padding:24px;background-color:' + CARD + ';"></td></tr>' +
+    '</table></td></tr></table></body></html>';
 }
 
 function buildEmailText(result, reportDate) {
