@@ -588,7 +588,18 @@ function ensureTab_(ss, name, headers) {
 }
 
 // Known spelling differences between the website and Church Teams (from the 10/11/2026 report).
-const SEED_FIXES = [];
+// Confirmed by Chris on 10/13/2026.
+const SEED_FIXES = [
+  ['Nermin Mouris', 'Abdelsayed, Nermin'],
+  ['Sana Hosny', 'Gerges, Sanaa'],
+  ['Amira Beshay', 'Gerges, Amira'],
+  ['Joly Fawzy', 'Hanna, Joly'],
+  ['Kerolous Haded', 'Farag, Kerolous'],
+  ['Joanne Roufail', 'Habib, Joann'],
+  ['Maro Fouad', 'Fouad, Marquilla'],
+  ['Kevin Boktor', 'Botros, Kevin'],
+  ['Nardeen Loka', 'Mickail, Nardeen']
+];
 
 function seedNameFixes_(ss) {
   const sheet = ss.getSheetByName(TAB_FIXES);
