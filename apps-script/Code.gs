@@ -17,8 +17,9 @@
  */
 
 const CONFIG = {
-  EMAIL_TO: 'christophermetri@gmail.com, amirloka@gmail.com', // weekly summary (comma-separated)
-  ERROR_EMAIL_TO: 'christophermetri@gmail.com',                // problems with the automation
+  EMAIL_TO: 'christophermetri@gmail.com',     // coordinator: full summary incl. "Names to check"
+  OTHER_RECIPIENTS: 'amirloka@gmail.com',     // e.g. the priest: summary without "Names to check" (comma-separated; '' for none)
+  ERROR_EMAIL_TO: 'christophermetri@gmail.com', // problems with the automation
   SENDER_NAME: 'St. Abraam Sunday School',
   SHEET_ID: '1CgfXd2B_dlAMDBqBkhzzU9jSCYh7mxFpXxcUS97u4q4',
   PDF_FOLDER_ID: '1Un-scNhfDC_QRVKDb9DvD49rEB1TkEwY',
@@ -132,11 +133,17 @@ function processMessage_(message, options) {
   writeHistory_(historySheet, dateKey, result);
 
   if (!sendEmail) return;
-  const html = buildEmailHtml(result, reportDate, 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit');
-  GmailApp.sendEmail(CONFIG.EMAIL_TO, 'Attendance for ' + formatLongDate_(reportDate), buildEmailText(result, reportDate), {
-    htmlBody: html,
-    name: CONFIG.SENDER_NAME
+  const subject = 'Attendance for ' + formatLongDate_(reportDate);
+  const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit';
+  const text = buildEmailText(result, reportDate);
+  GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
+    htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
   });
+  if (String(CONFIG.OTHER_RECIPIENTS || '').trim()) {
+    GmailApp.sendEmail(CONFIG.OTHER_RECIPIENTS, subject, text, {
+      htmlBody: buildEmailHtml(result, reportDate, sheetUrl, { hideNameCheck: true }), name: CONFIG.SENDER_NAME
+    });
+  }
 }
 
 /* ============================== Pure logic (tested) ============================== */
@@ -439,7 +446,8 @@ function formatLongDate_(d) {
   return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 }
 
-function buildEmailHtml(result, reportDate, sheetUrl) {
+function buildEmailHtml(result, reportDate, sheetUrl, options) {
+  const hideNameCheck = !!(options && options.hideNameCheck);
   // Built with tables, explicit backgrounds and a "light only" color scheme so phone mail apps
   // in dark mode (e.g. iPhone Mail) show the real maroon/gold design instead of recoloring it.
   const M = CONFIG.MAROON, G = CONFIG.GOLD, TEXT = '#222222', CARD = '#ffffff', PAGE = '#f4f1ea';
@@ -467,7 +475,7 @@ function buildEmailHtml(result, reportDate, sheetUrl) {
   result.classes.forEach(c => c.servants.filter(s => s.status === 'Not found').forEach(s => missing.push(
     escapeHtml(s.servant) + ' — ' + escapeHtml(c.cls) +
     (s.suggestions && s.suggestions.length ? ' <span style="color:#777777;">(Church Teams has: ' + s.suggestions.map(escapeHtml).join('; ') + ')</span>' : ''))));
-  if (missing.length) {
+  if (missing.length && !hideNameCheck) {
     rows += '<tr><td style="padding:24px 24px 0 24px;background-color:' + CARD + ';">' +
       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
       '<td bgcolor="#f7f3e8" style="background-color:#f7f3e8;border-left:4px solid ' + G + ';padding:10px 14px;font-size:13px;color:#555555;">' +
