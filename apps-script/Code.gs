@@ -17,7 +17,8 @@
  */
 
 const CONFIG = {
-  EMAIL_TO: 'christophermetri@gmail.com',
+  EMAIL_TO: 'christophermetri@gmail.com, amirloka@gmail.com', // weekly summary (comma-separated)
+  ERROR_EMAIL_TO: 'christophermetri@gmail.com',                // problems with the automation
   SENDER_NAME: 'St. Abraam Sunday School',
   SHEET_ID: '1CgfXd2B_dlAMDBqBkhzzU9jSCYh7mxFpXxcUS97u4q4',
   PDF_FOLDER_ID: '1Un-scNhfDC_QRVKDb9DvD49rEB1TkEwY',
@@ -644,7 +645,7 @@ function seedNameFixes_(ss) {
 }
 
 function notifyError_(err, message) {
-  GmailApp.sendEmail(CONFIG.EMAIL_TO, 'Sunday School attendance automation hit a problem',
+  GmailApp.sendEmail(CONFIG.ERROR_EMAIL_TO, 'Sunday School attendance automation hit a problem',
     'The attendance email for "' + (message ? message.getSubject() + ' (' + message.getDate() + ')' : 'unknown') +
     '" could not be processed.\n\nError: ' + (err && err.stack || err) +
     '\n\nYou can re-run it from the Apps Script editor with runLatestReport().', { name: CONFIG.SENDER_NAME });

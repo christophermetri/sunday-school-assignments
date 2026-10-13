@@ -19,7 +19,7 @@ Every hour it checks the church inbox for the Church Teams scheduled report
 - **Servants** – a copy of the roster from the website (refreshed every run, used as a backup).
 
 ## Changing who gets the email
-Edit `EMAIL_TO` at the top of `Code.gs` in the Apps Script editor (script.google.com, signed in as stabraammain).
+Edit `EMAIL_TO` (weekly summary; currently Chris and the priest) or `ERROR_EMAIL_TO` (problem alerts) at the top of `Code.gs` in the Apps Script editor (script.google.com, signed in as stabraammain).
 Separate several addresses with commas.
 
 ## Manual runs (Apps Script editor)
