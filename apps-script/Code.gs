@@ -66,15 +66,21 @@ function setup() {
 
   // Log any reports already in the inbox to History (no email), so streaks start counting from them.
   const label = getOrCreateLabel_();
-  const threads = GmailApp.search(CONFIG.GMAIL_QUERY + ' -label:"' + CONFIG.PROCESSED_LABEL + '" newer_than:30d');
+  const threads = unprocessedThreads_();
   threads.forEach(t => t.getMessages().forEach(m => processMessage_(m, { sendEmail: false })));
   threads.forEach(t => t.addLabel(label));
   Logger.log('Setup complete. Hourly trigger installed. Back-filled ' + threads.length + ' report(s).');
 }
 
+/** Church Teams report threads from the last 30 days that haven't been processed yet. */
+function unprocessedThreads_() {
+  return GmailApp.search(CONFIG.GMAIL_QUERY + ' newer_than:30d')
+    .filter(t => !t.getLabels().some(l => l.getName() === CONFIG.PROCESSED_LABEL));
+}
+
 function checkForNewReports() {
   const label = getOrCreateLabel_();
-  const threads = GmailApp.search(CONFIG.GMAIL_QUERY + ' -label:"' + CONFIG.PROCESSED_LABEL + '" newer_than:30d');
+  const threads = unprocessedThreads_();
   const messages = [];
   threads.forEach(t => t.getMessages().forEach(m => messages.push(m)));
   messages.sort((a, b) => a.getDate() - b.getDate());
@@ -140,10 +146,19 @@ function parseReportDate(body) {
   return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]), 12);
 }
 
+/**
+ * Groups listed in the email ("Groups: '6th Grade ','3rd Grade',..."), plus every group the
+ * website classes map to — so a class that didn't take attendance is always reported.
+ */
 function parseRequestedGroups(body) {
-  const m = /Groups:\s*(.+)/i.exec(body || '');
-  if (!m) return [];
-  return (m[1].match(/'([^']*)'/g) || []).map(s => cleanGroup(s.slice(1, -1))).filter(Boolean);
+  const text = String(body || '').replace(/&#39;|&apos;|&#8216;|&#8217;/g, "'").replace(/[‘’]/g, "'");
+  const m = /Groups:\s*([^\n]+)/i.exec(text);
+  const found = m ? m[1].split(/'\s*,\s*'|,/).map(s => cleanGroup(s.replace(/['"]/g, ''))).filter(Boolean) : [];
+  const all = found.slice();
+  CLASS_GROUPS.forEach(([, groups]) => groups.forEach(g => {
+    if (!all.some(x => groupKey(x) === groupKey(g))) all.push(g);
+  }));
+  return all;
 }
 
 function cleanGroup(name) {
