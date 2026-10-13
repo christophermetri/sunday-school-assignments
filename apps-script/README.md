@@ -25,5 +25,6 @@ Separate several addresses with commas.
 ## Manual runs (Apps Script editor)
 - `setup()` – one-time: creates the tabs and the hourly trigger, and logs any reports already in the inbox (without emailing).
 - `runLatestReport()` – re-processes the most recent report and re-sends the email.
+- `sendLatestToOtherRecipients()` – sends the most recent report only to `OTHER_RECIPIENTS` (e.g. the priest).
 
 `Code.gs` here is the source of truth; paste it into the editor after changes.

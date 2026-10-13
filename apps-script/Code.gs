@@ -13,6 +13,7 @@
  * Functions you can run by hand from the Apps Script editor:
  *   setup()             – creates the sheet tabs and the hourly trigger (run once)
  *   runLatestReport()   – re-processes the most recent report and re-sends the email
+ *   sendLatestToOtherRecipients() – sends the most recent report only to OTHER_RECIPIENTS
  *   checkForNewReports() – what the hourly trigger runs
  */
 
@@ -96,13 +97,23 @@ function checkForNewReports() {
   threads.forEach(t => t.addLabel(label));
 }
 
-function runLatestReport() {
+function latestReportMessage_() {
   const threads = GmailApp.search(CONFIG.GMAIL_QUERY, 0, 5);
   if (!threads.length) throw new Error('No Church Teams attendance emails found.');
   let latest = null;
   threads.forEach(t => t.getMessages().forEach(m => { if (!latest || m.getDate() > latest.getDate()) latest = m; }));
+  return latest;
+}
+
+function runLatestReport() {
+  const latest = latestReportMessage_();
   processMessage_(latest);
   latest.getThread().addLabel(getOrCreateLabel_());
+}
+
+/** Re-sends the latest report only to OTHER_RECIPIENTS (e.g. the priest), not the coordinator. */
+function sendLatestToOtherRecipients() {
+  processMessage_(latestReportMessage_(), { only: 'others' });
 }
 
 /* ============================== Main pipeline ============================== */
@@ -136,9 +147,11 @@ function processMessage_(message, options) {
   const subject = 'Attendance for ' + formatLongDate_(reportDate);
   const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit';
   const text = buildEmailText(result, reportDate);
-  GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
-    htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
-  });
+  if (!(options && options.only === 'others')) {
+    GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
+      htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
+    });
+  }
   if (String(CONFIG.OTHER_RECIPIENTS || '').trim()) {
     GmailApp.sendEmail(CONFIG.OTHER_RECIPIENTS, subject, text, {
       htmlBody: buildEmailHtml(result, reportDate, sheetUrl, { hideNameCheck: true }), name: CONFIG.SENDER_NAME
