@@ -89,7 +89,7 @@ function checkForNewReports() {
   messages.sort((a, b) => a.getDate() - b.getDate());
   messages.forEach(m => {
     try {
-      processMessage_(m);
+      processMessage_(m, { automatic: true });
     } catch (err) {
       notifyError_(err, m);
     }
@@ -139,13 +139,23 @@ function processMessage_(message, options) {
   const result = analyze(report, requestedGroups, roster, fixes);
 
   const historySheet = ss.getSheetByName(TAB_HISTORY) || ensureTab_(ss, TAB_HISTORY, ['Date', 'Class', 'Servant', 'Status', 'Church Teams name']);
+  // A report for a week that's already logged is a correction (e.g. Church Teams re-run after late attendance)
+  const alreadyLogged = historyHasDate_(historySheet, dateKey);
   const history = readHistory_(historySheet, dateKey);
   addStreaks(result, history, dateKey);
   writeHistory_(historySheet, dateKey, result);
 
   if (!sendEmail) return;
-  const subject = 'Attendance for ' + formatLongDate_(reportDate);
   const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit';
+  if (options && options.automatic && alreadyLogged) {
+    // Quietly update History; tell only the coordinator, not the priest
+    GmailApp.sendEmail(CONFIG.EMAIL_TO, 'Corrected attendance for ' + formatLongDate_(reportDate),
+      buildEmailText(result, reportDate), {
+        htmlBody: buildEmailHtml(result, reportDate, sheetUrl, { corrected: true }), name: CONFIG.SENDER_NAME
+      });
+    return;
+  }
+  const subject = 'Attendance for ' + formatLongDate_(reportDate);
   const text = buildEmailText(result, reportDate);
   if (!(options && options.only === 'others')) {
     GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
@@ -461,6 +471,7 @@ function formatLongDate_(d) {
 
 function buildEmailHtml(result, reportDate, sheetUrl, options) {
   const hideNameCheck = !!(options && options.hideNameCheck);
+  const corrected = !!(options && options.corrected);
   // Built with tables, explicit backgrounds and a "light only" color scheme so phone mail apps
   // in dark mode (e.g. iPhone Mail) show the real maroon/gold design instead of recoloring it.
   const M = CONFIG.MAROON, G = CONFIG.GOLD, TEXT = '#222222', CARD = '#ffffff', PAGE = '#f4f1ea';
@@ -471,6 +482,12 @@ function buildEmailHtml(result, reportDate, sheetUrl, options) {
     items.map(i => '<li style="margin:4px 0;color:' + TEXT + ';">' + i + '</li>').join('') + '</ul></td></tr>';
 
   let rows = '';
+  if (corrected) {
+    rows += '<tr><td style="padding:16px 24px 0 24px;background-color:' + CARD + ';">' +
+      '<div style="background-color:#f7f3e8;border-left:4px solid ' + G + ';padding:8px 12px;font-size:13px;color:#555555;">' +
+      'Church Teams sent an updated report for this week. The History tab has been corrected, so next week\'s streak notes will use these numbers. ' +
+      'This copy went only to you.</div></td></tr>';
+  }
   if (result.notTaken.length) rows += section("Classes that didn't take attendance:", result.notTaken.map(escapeHtml));
   result.classes.forEach(c => {
     const absent = c.servants.filter(s => s.status === 'Absent');
@@ -611,6 +628,11 @@ function loadNameFixes_(ss) {
     });
   }
   return fixes;
+}
+
+function historyHasDate_(sheet, dateKey) {
+  if (sheet.getLastRow() < 2) return false;
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues().some(r => r[0] === dateKey);
 }
 
 function readHistory_(sheet, dateKey) {
