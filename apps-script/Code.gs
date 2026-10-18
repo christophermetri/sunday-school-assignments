@@ -127,7 +127,7 @@ function processMessage_(message, options) {
 
   const pdf = message.getAttachments().filter(a => /pdf/i.test(a.getContentType()) || /\.pdf$/i.test(a.getName()))[0];
   if (!pdf) throw new Error('The Church Teams email has no PDF attached.');
-  savePdf_(pdf, dateKey);
+  savePdf_(pdf, dateKey, message.getDate());
 
   const lines = pdfToLines_(pdf);
   const report = parseReport(lines);
@@ -558,10 +558,20 @@ function getOrCreateLabel_() {
   return GmailApp.getUserLabelByName(CONFIG.PROCESSED_LABEL) || GmailApp.createLabel(CONFIG.PROCESSED_LABEL);
 }
 
-function savePdf_(blob, dateKey) {
+/**
+ * Saves the report PDF as "Attendance yyyy-MM-dd.pdf". If that week already has a PDF (a re-run or
+ * corrected report), the new one is kept alongside it as "... (updated yyyy-MM-dd).pdf" using the
+ * date the email arrived. Re-processing the very same email doesn't create another copy.
+ */
+function savePdf_(blob, dateKey, receivedDate) {
   const folder = DriveApp.getFolderById(CONFIG.PDF_FOLDER_ID);
-  const name = 'Attendance ' + dateKey + '.pdf';
-  if (!folder.getFilesByName(name).hasNext()) folder.createFile(blob.copyBlob().setName(name));
+  let name = 'Attendance ' + dateKey + '.pdf';
+  if (folder.getFilesByName(name).hasNext()) {
+    const received = Utilities.formatDate(receivedDate || new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    name = 'Attendance ' + dateKey + ' (updated ' + received + ').pdf';
+    if (received === dateKey || folder.getFilesByName(name).hasNext()) return;
+  }
+  folder.createFile(blob.copyBlob().setName(name));
 }
 
 /** Converts the PDF to a temporary Google Doc and returns its text lines in reading order. */
