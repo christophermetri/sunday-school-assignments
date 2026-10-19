@@ -19,7 +19,7 @@
 
 const CONFIG = {
   EMAIL_TO: 'christophermetri@gmail.com',     // coordinator: full summary incl. "Names to check"
-  OTHER_RECIPIENTS: 'amirloka@gmail.com',     // e.g. the priest: summary without "Names to check" (comma-separated; '' for none)
+  OTHER_RECIPIENTS: '',                       // e.g. the priest (amirloka@gmail.com) — paused by Chris 10/19; summary without "Names to check" (comma-separated; '' for none)
   ERROR_EMAIL_TO: 'christophermetri@gmail.com', // problems with the automation
   SENDER_NAME: 'St. Abraam Sunday School',
   SHEET_ID: '1CgfXd2B_dlAMDBqBkhzzU9jSCYh7mxFpXxcUS97u4q4',
