@@ -87,17 +87,14 @@ function checkForNewReports() {
   const messages = [];
   threads.forEach(t => t.getMessages().forEach(m => messages.push(m)));
   messages.sort((a, b) => a.getDate() - b.getDate());
-  const skipped = {};
   messages.forEach(m => {
-    // Multi-week reports aren't supported yet: leave them unprocessed (no History change, no email)
-    if (isMultiWeekReport(m.getPlainBody())) { skipped[m.getThread().getId()] = true; return; }
     try {
       processMessage_(m, { automatic: true });
     } catch (err) {
       notifyError_(err, m);
     }
   });
-  threads.filter(t => !skipped[t.getId()]).forEach(t => t.addLabel(label));
+  threads.forEach(t => t.addLabel(label));
 }
 
 function latestReportMessage_() {
@@ -122,36 +119,62 @@ function sendLatestToOtherRecipients() {
 /* ============================== Main pipeline ============================== */
 
 function processMessage_(message, options) {
-  const sendEmail = !(options && options.sendEmail === false);
+  options = options || {};
+  const sendEmail = options.sendEmail !== false;
   const body = message.getPlainBody();
-  const reportDate = parseReportDate(body) || message.getDate();
-  const dateKey = Utilities.formatDate(reportDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const requestedGroups = parseRequestedGroups(body);
-
   const pdf = message.getAttachments().filter(a => /pdf/i.test(a.getContentType()) || /\.pdf$/i.test(a.getName()))[0];
   if (!pdf) throw new Error('The Church Teams email has no PDF attached.');
-  savePdf_(pdf, dateKey, message.getDate());
 
-  const lines = pdfToLines_(pdf);
-  const report = parseReport(lines);
-  if (!Object.keys(report).length) throw new Error('Could not read any groups from the attendance PDF.');
+  const report = parseReport(pdfToLines_(pdf), parseReportDate(body) || message.getDate());
+  if (!Object.keys(report.groups).length || !report.weeks.length) throw new Error('Could not read any groups from the attendance PDF.');
+
+  const target = targetWeekIndex(report, message.getDate());
+  if (target < 0) {
+    throw new Error('The Church Teams report doesn\'t include a column for the Sunday of ' + message.getDate().toDateString() +
+      '. It shows ' + report.weeks[0].label + ' to ' + report.weeks[report.weeks.length - 1].label +
+      '. In Church Teams, move the report\'s start date forward so this Sunday fits on the page.');
+  }
+  if (!weekHasData(report, target)) {
+    throw new Error('No one has taken attendance yet for ' + formatLongDate_(report.weeks[target].date) + ' in this Church Teams report.');
+  }
+  const reportDate = report.weeks[target].date;
+  const dateKey = report.weeks[target].key;
+  savePdf_(pdf, dateKey, message.getDate());
 
   const roster = loadRoster_();
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const fixes = loadNameFixes_(ss);
-  const result = analyze(report, requestedGroups, roster, fixes);
-
   const historySheet = ss.getSheetByName(TAB_HISTORY) || ensureTab_(ss, TAB_HISTORY, ['Date', 'Class', 'Servant', 'Status', 'Church Teams name']);
-  // A report for a week that's already logged is a correction (e.g. Church Teams re-run after late attendance)
+
+  // Earlier Sundays in the report: correct History where late check-ins changed something
+  const updates = [];
+  for (let i = 0; i < target; i++) {
+    if (!weekHasData(report, i)) continue;
+    const res = analyze(weekView(report, i), requestedGroups, roster, fixes);
+    keepNotFound_(historySheet, report.weeks[i].key, res);
+    const changed = changedClasses_(historySheet, report.weeks[i].key, res);
+    if (changed.length) {
+      writeHistory_(historySheet, report.weeks[i].key, res);
+      updates.push(formatLongDate_(report.weeks[i].date) + ': ' + changed.join(', '));
+    }
+  }
+
+  const result = analyze(weekView(report, target), requestedGroups, roster, fixes);
+  result.updates = updates;
+  result.uncertain = Object.keys(report.groups).filter(k => report.groups[k].uncertain)
+    .map(k => report.groups[k].name + ' (' + report.groups[k].uncertain + ')');
+  const columnsLeft = report.weeks.length - 1 - target;
+  result.columnsLeft = report.weeks.length > 1 && columnsLeft <= 3 ? columnsLeft : null;
+
   const alreadyLogged = historyHasDate_(historySheet, dateKey);
-  const history = readHistory_(historySheet, dateKey);
-  addStreaks(result, history, dateKey);
+  addStreaks(result, readHistory_(historySheet, dateKey), dateKey);
   writeHistory_(historySheet, dateKey, result);
 
   if (!sendEmail) return;
   const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit';
-  if (options && options.automatic && alreadyLogged) {
-    // Quietly update History; tell only the coordinator, not the priest
+  if (options.automatic && alreadyLogged) {
+    // This Sunday was already emailed: quietly update History; tell only the coordinator
     GmailApp.sendEmail(CONFIG.EMAIL_TO, 'Corrected attendance for ' + formatLongDate_(reportDate),
       buildEmailText(result, reportDate), {
         htmlBody: buildEmailHtml(result, reportDate, sheetUrl, { corrected: true }), name: CONFIG.SENDER_NAME
@@ -160,7 +183,7 @@ function processMessage_(message, options) {
   }
   const subject = 'Attendance for ' + formatLongDate_(reportDate);
   const text = buildEmailText(result, reportDate);
-  if (!(options && options.only === 'others')) {
+  if (options.only !== 'others') {
     GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
       htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
     });
@@ -172,14 +195,40 @@ function processMessage_(message, options) {
   }
 }
 
-/* ============================== Pure logic (tested) ============================== */
-
-/** True when the email's criteria cover more than one day (e.g. "10/11/2026 to 10/18/2026"). */
-function isMultiWeekReport(body) {
-  const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+to\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(body || '');
-  if (!m) return false;
-  return !(m[1] === m[4] && m[2] === m[5] && m[3] === m[6]);
+/**
+ * Someone logged "Not found" for a past Sunday (not in Church Teams yet) stays "Not found" when that
+ * Sunday is re-read later — being added to Church Teams afterwards shouldn't make them "Absent" then.
+ */
+function keepNotFound_(sheet, dateKey, result) {
+  if (sheet.getLastRow() < 2) return;
+  const notFound = {};
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getDisplayValues().forEach(r => {
+    if (r[0] === dateKey && r[3] === 'Not found') notFound[r[1] + '|' + normName(r[2])] = true;
+  });
+  result.classes.forEach(c => c.servants.forEach(s => {
+    if (s.status === 'Absent' && notFound[c.cls + '|' + normName(s.servant)]) s.status = 'Not found';
+  }));
 }
+
+/** Classes whose History rows for dateKey would change with this result (all classes if none logged). */
+function changedClasses_(sheet, dateKey, result) {
+  const existing = {};
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getDisplayValues().forEach(r => {
+      if (r[0] === dateKey) existing[r[1] + '|' + normName(r[2])] = r[3];
+    });
+  }
+  const logged = Object.keys(existing).length > 0;
+  const changed = [];
+  result.classes.forEach(c => {
+    const diff = c.servants.some(s => existing[c.cls + '|' + normName(s.servant)] !== s.status) ||
+      Object.keys(existing).some(k => k.indexOf(c.cls + '|') === 0 && !c.servants.some(s => k === c.cls + '|' + normName(s.servant)));
+    if (diff || !logged) changed.push(c.cls);
+  });
+  return changed;
+}
+
+/* ============================== Pure logic (tested) ============================== */
 
 function parseReportDate(body) {
   const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+to/i.exec(body || '');
@@ -216,39 +265,142 @@ function groupKey(name) {
  * lines: text lines in reading order. Table rows arrive as "cell | cell | cell".
  * Returns { groupKey: { name, members: [{ name, present }], presentCount } }
  */
-function parseReport(lines) {
+function parseReport(lines, startDate) {
+  // Church Teams report: per group a header row with one column per week ("10/11 - 10/17"),
+  // member rows "Last, First | X | | X ...", and a "# of Group Members: N | 17 | 16 ..." totals row.
+  // The PDF-to-Doc conversion sometimes turns a row into plain text ("Last, First X X"), losing which
+  // column an X was in; those rows are placed afterwards using the per-week totals.
+  const RANGE = /(\d{1,2})\/(\d{1,2})\s*-\s*\d{1,2}\/\d{1,2}/g;
+  const pad = n => ('0' + n).slice(-2);
   const groups = {};
+  let weekLabels = null;
   let current = null;
-  const HEADER = /^([^,|]+?)\s*\|?\s*\d{1,2}\/\d{1,2}\s*-\s*\d{1,2}\/\d{1,2}/;
-  lines.forEach(raw => {
-    String(raw).split(/[\n\r\u000b]+/).forEach(piece => {
-      const line = piece.replace(/ /g, ' ').trim();
-      if (!line) return;
-      const h = HEADER.exec(line);
-      if (h) {
-        const name = cleanGroup(h[1]);
-        const key = groupKey(name);
-        current = groups[key] || (groups[key] = { name: name, members: [], presentCount: 0 });
-        return;
-      }
-      if (!current) return;
-      if (/group members|overall percentage|%/i.test(line)) return;
-      let name, present;
-      if (line.indexOf('|') !== -1) {
-        const cells = line.split('|').map(c => c.trim());
-        name = cells[0];
-        present = cells.slice(1).some(c => /^x$/i.test(c));
-      } else {
-        const m = /^(.*?)(?:\s+(X))?$/.exec(line);
-        name = m[1];
-        present = !!m[2];
-      }
-      if (name.indexOf(',') === -1) return;
-      current.members.push({ name: name.replace(/\s+/g, ' ').trim(), present: present });
-      if (present) current.presentCount++;
-    });
+  let pendingName = '';
+  const isX = c => /^x$/i.test(String(c).trim());
+
+  const pieces = [];
+  lines.forEach(raw => String(raw).split(/[\n\r\u000b]+/).forEach(p => {
+    const s = p.replace(/ /g, ' ').replace(/[ \t]+/g, ' ').trim();
+    if (s) pieces.push(s);
+  }));
+
+  pieces.forEach(line => {
+    const cells = line.indexOf('|') !== -1 ? line.split('|').map(c => c.trim()) : null;
+    const first = cells ? cells[0] : line;
+    const labels = [];
+    let m;
+    RANGE.lastIndex = 0;
+    while ((m = RANGE.exec(line))) labels.push(pad(m[1]) + '/' + pad(m[2]));
+    const nameBeforeDates = cells ? first.replace(RANGE, '').trim() : line.slice(0, line.search(/\d{1,2}\/\d{1,2}\s*-/)).trim();
+    if (labels.length && nameBeforeDates && nameBeforeDates.indexOf(',') === -1 && nameBeforeDates.indexOf('#') === -1) {
+      const name = cleanGroup(nameBeforeDates);
+      const key = groupKey(name);
+      if (!weekLabels || labels.length > weekLabels.length) weekLabels = labels;
+      current = groups[key] || (groups[key] = { name: name, weeks: labels, members: [], counts: null, unplaced: [] });
+      pendingName = '';
+      return;
+    }
+    if (!current) return;
+    if (/group members/i.test(line)) {
+      const nums = (line.match(/\d+/g) || []).map(Number);
+      if (nums.length > 1) current.counts = nums.slice(1);
+      return;
+    }
+    if (/%|overall percentage|distinct members/i.test(line)) return;
+
+    let name, present = null, xCount = 0;
+    if (cells) {
+      name = cells[0];
+      const rest = cells.slice(1);
+      xCount = rest.filter(isX).length;
+      // Extra trailing cells (a date column cut off at the page edge) are ignored
+      if (rest.length >= current.weeks.length) present = current.weeks.map((w, i) => isX(rest[i]));
+    } else {
+      const mm = /^(.*?)((?:\s+X)*)\s*$/i.exec(line);
+      name = mm[1];
+      xCount = (mm[2].match(/X/gi) || []).length;
+      if (current.weeks.length === 1) present = [xCount > 0];
+    }
+    name = name.replace(/\s+/g, ' ').trim();
+    if (pendingName) { name = (pendingName + ' ' + name).trim(); pendingName = ''; }
+    if (name.indexOf(',') === -1) return;
+    if (/,$/.test(name) && !xCount && !present) { pendingName = name; return; }   // "Azab," then "Mckenna"
+    const member = { name: name, present: present || current.weeks.map(() => false) };
+    current.members.push(member);
+    if (!present && xCount) current.unplaced.push({ member: member, xCount: xCount });
   });
-  return groups;
+
+  // Place X's from rows that lost their columns, using each week's check-in total
+  Object.keys(groups).forEach(k => {
+    const g = groups[k];
+    g.uncertain = 0;
+    if (!g.unplaced.length) return;
+    if (!g.counts || g.counts.length < g.weeks.length) { g.uncertain = g.unplaced.length; markUnplacedPresent_(g); return; }
+    let progress = true;
+    while (g.unplaced.length && progress) {
+      progress = false;
+      const deficit = g.weeks.map((w, i) => g.counts[i] - g.members.filter(m => m.present[i]).length);
+      const open = deficit.map((d, i) => (d > 0 ? i : -1)).filter(i => i >= 0);
+      for (let u = 0; u < g.unplaced.length; u++) {
+        const row = g.unplaced[u];
+        if (row.xCount === open.length) {
+          open.forEach(i => { row.member.present[i] = true; });
+          g.unplaced.splice(u, 1);
+          progress = true;
+          break;
+        }
+      }
+    }
+    g.uncertain = g.unplaced.length;
+    markUnplacedPresent_(g);
+  });
+
+  // Week start dates (the year rolls over when the month goes backwards, e.g. 12/27 -> 01/03)
+  const weeks = [];
+  if (weekLabels) {
+    let year = (startDate || new Date()).getFullYear();
+    let prevMonth = 0;
+    weekLabels.forEach(l => {
+      const mo = Number(l.slice(0, 2)), day = Number(l.slice(3, 5));
+      if (mo < prevMonth) year++;
+      prevMonth = mo;
+      weeks.push({ label: l, key: year + '-' + l.slice(0, 2) + '-' + l.slice(3, 5), date: new Date(year, mo - 1, day, 12) });
+    });
+  }
+  return { weeks: weeks, groups: groups };
+}
+
+/** Rows whose columns couldn't be worked out count as present (better than a false "absent"). */
+function markUnplacedPresent_(g) {
+  g.unplaced.forEach(row => { row.member.present = row.member.present.map((p, i) => p || (g.counts ? g.counts[i] > 0 : true)); });
+  g.unplaced = [];
+}
+
+/** One week's view of a parsed report, in the shape analyze() expects. */
+function weekView(report, weekIndex) {
+  const view = {};
+  Object.keys(report.groups).forEach(k => {
+    const g = report.groups[k];
+    const members = g.members.map(m => ({ name: m.name, present: !!m.present[weekIndex] }));
+    const counted = members.filter(m => m.present).length;
+    view[k] = { name: g.name, members: members, presentCount: g.counts && g.counts[weekIndex] != null ? Math.max(g.counts[weekIndex], counted) : counted };
+  });
+  return view;
+}
+
+/** Index of the week to email about: the Sunday on or before `when`, if the report has it. */
+function targetWeekIndex(report, when) {
+  if (report.weeks.length === 1) return 0;
+  const d = new Date(when.getFullYear(), when.getMonth(), when.getDate() - when.getDay(), 12);
+  const key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  return report.weeks.findIndex(w => w.key === key);
+}
+
+function weekHasData(report, i) {
+  return Object.keys(report.groups).some(k => {
+    const g = report.groups[k];
+    return (g.counts && g.counts[i] > 0) || g.members.some(m => m.present[i]);
+  });
 }
 
 /** Website roster: { className: [servant, ...] } for the classes in CLASS_GROUPS. */
@@ -492,10 +644,21 @@ function buildEmailHtml(result, reportDate, sheetUrl, options) {
     items.map(i => '<li style="margin:4px 0;color:' + TEXT + ';">' + i + '</li>').join('') + '</ul></td></tr>';
 
   let rows = '';
+  const notes = [];
+  if (!hideNameCheck) {
+    if (result.updates && result.updates.length) notes.push('Updated earlier Sundays from late check-ins — ' + result.updates.map(escapeHtml).join('; ') + '.');
+    if (result.uncertain && result.uncertain.length) notes.push('Some rows in the PDF couldn\'t be lined up with a date and were counted as present: ' + result.uncertain.map(escapeHtml).join(', ') + '.');
+    if (result.columnsLeft != null) notes.push('The Church Teams report only has room for ' + result.columnsLeft + ' more Sunday' + (result.columnsLeft === 1 ? '' : 's') + '. Move its start date forward in Church Teams soon.');
+  }
+  if (notes.length) {
+    rows += '<tr><td style="padding:16px 24px 0 24px;background-color:' + CARD + ';">' +
+      '<div style="background-color:#f7f3e8;border-left:4px solid ' + G + ';padding:8px 12px;font-size:13px;color:#555555;">' +
+      notes.join('<br>') + '</div></td></tr>';
+  }
   if (corrected) {
     rows += '<tr><td style="padding:16px 24px 0 24px;background-color:' + CARD + ';">' +
       '<div style="background-color:#f7f3e8;border-left:4px solid ' + G + ';padding:8px 12px;font-size:13px;color:#555555;">' +
-      'Church Teams sent an updated report for this week. The History tab has been corrected, so next week\'s streak notes will use these numbers. ' +
+      'Church Teams sent this Sunday\'s report again, with changes. The History tab has been corrected, so next week\'s streak notes will use these numbers. ' +
       'This copy went only to you.</div></td></tr>';
   }
   if (result.notTaken.length) rows += section("Classes that didn't take attendance:", result.notTaken.map(escapeHtml));
