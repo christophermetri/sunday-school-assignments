@@ -87,14 +87,17 @@ function checkForNewReports() {
   const messages = [];
   threads.forEach(t => t.getMessages().forEach(m => messages.push(m)));
   messages.sort((a, b) => a.getDate() - b.getDate());
+  const skipped = {};
   messages.forEach(m => {
+    // Multi-week reports aren't supported yet: leave them unprocessed (no History change, no email)
+    if (isMultiWeekReport(m.getPlainBody())) { skipped[m.getThread().getId()] = true; return; }
     try {
       processMessage_(m, { automatic: true });
     } catch (err) {
       notifyError_(err, m);
     }
   });
-  threads.forEach(t => t.addLabel(label));
+  threads.filter(t => !skipped[t.getId()]).forEach(t => t.addLabel(label));
 }
 
 function latestReportMessage_() {
@@ -170,6 +173,13 @@ function processMessage_(message, options) {
 }
 
 /* ============================== Pure logic (tested) ============================== */
+
+/** True when the email's criteria cover more than one day (e.g. "10/11/2026 to 10/18/2026"). */
+function isMultiWeekReport(body) {
+  const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+to\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(body || '');
+  if (!m) return false;
+  return !(m[1] === m[4] && m[2] === m[5] && m[3] === m[6]);
+}
 
 function parseReportDate(body) {
   const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+to/i.exec(body || '');
