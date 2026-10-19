@@ -25,7 +25,9 @@ const CONFIG = {
   SHEET_ID: '1CgfXd2B_dlAMDBqBkhzzU9jSCYh7mxFpXxcUS97u4q4',
   PDF_FOLDER_ID: '1Un-scNhfDC_QRVKDb9DvD49rEB1TkEwY',
   ROSTER_URL: 'https://raw.githubusercontent.com/christophermetri/sunday-school-assignments/main/index.html',
-  GMAIL_QUERY: 'from:groupfinder@churchteams.com subject:"Sunday School Attendance" has:attachment',
+  // Church Teams' own emails, plus reports Chris runs himself and forwards to the church inbox
+  GMAIL_QUERY: '(from:groupfinder@churchteams.com subject:"Sunday School Attendance" has:attachment) OR ' +
+               '(from:christophermetri@gmail.com "Sunday School Attendance" has:attachment filename:pdf)',
   PROCESSED_LABEL: 'Attendance Processed',
   MAROON: '#8B2323',
   GOLD: '#DAA520'
@@ -77,7 +79,7 @@ function setup() {
 
 /** Church Teams report threads from the last 30 days that haven't been processed yet. */
 function unprocessedThreads_() {
-  return GmailApp.search(CONFIG.GMAIL_QUERY + ' newer_than:30d')
+  return GmailApp.search('(' + CONFIG.GMAIL_QUERY + ') newer_than:30d')
     .filter(t => !t.getLabels().some(l => l.getName() === CONFIG.PROCESSED_LABEL));
 }
 
