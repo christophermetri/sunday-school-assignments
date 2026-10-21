@@ -26,5 +26,6 @@ Separate several addresses with commas.
 - `setup()` – one-time: creates the tabs and the hourly trigger, and logs any reports already in the inbox (without emailing).
 - `runLatestReport()` – re-processes the most recent report and re-sends the email.
 - `sendLatestToOtherRecipients()` – sends the most recent report only to `OTHER_RECIPIENTS` (e.g. the priest).
+- `runLatestDrivePdf()` – runs the newest PDF dropped into the Church Teams Attendance Drive folder by hand (emails the coordinator only) and renames it "Attendance yyyy-mm-dd.pdf".
 
 `Code.gs` here is the source of truth; paste it into the editor after changes.

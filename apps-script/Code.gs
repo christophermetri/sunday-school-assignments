@@ -121,19 +121,50 @@ function sendLatestToOtherRecipients() {
 /* ============================== Main pipeline ============================== */
 
 function processMessage_(message, options) {
-  options = options || {};
-  const sendEmail = options.sendEmail !== false;
-  const body = message.getPlainBody();
-  const requestedGroups = parseRequestedGroups(body);
   const pdf = message.getAttachments().filter(a => /pdf/i.test(a.getContentType()) || /\.pdf$/i.test(a.getName()))[0];
   if (!pdf) throw new Error('The Church Teams email has no PDF attached.');
+  const lines = pdfToLines_(pdf);
+  return processReport_(lines, message.getPlainBody() + '\n' + lines.join('\n'), message.getDate(),
+    dateKey => savePdf_(pdf, dateKey, message.getDate()), options);
+}
 
-  const report = parseReport(pdfToLines_(pdf), parseReportDate(body) || message.getDate());
+/**
+ * Runs the newest PDF that was dropped into the "Church Teams Attendance" Drive folder by hand
+ * (anything not already named "Attendance ..."). Emails the coordinator only.
+ */
+function runLatestDrivePdf() {
+  const folder = DriveApp.getFolderById(CONFIG.PDF_FOLDER_ID);
+  const it = folder.getFilesByType('application/pdf');
+  let newest = null;
+  while (it.hasNext()) {
+    const f = it.next();
+    if (/^Attendance \d{4}-\d{2}-\d{2}/.test(f.getName())) continue;
+    if (!newest || f.getDateCreated() > newest.getDateCreated()) newest = f;
+  }
+  if (!newest) throw new Error('No new PDF found in the Church Teams Attendance folder (files already named "Attendance ..." are skipped).');
+  const lines = pdfToLines_(newest.getBlob());
+  const received = newest.getDateCreated();
+  processReport_(lines, lines.join('\n'), received, dateKey => {
+    let name = 'Attendance ' + dateKey + '.pdf';
+    if (folder.getFilesByName(name).hasNext()) {
+      name = 'Attendance ' + dateKey + ' (updated ' + Utilities.formatDate(received, Session.getScriptTimeZone(), 'yyyy-MM-dd') + ').pdf';
+    }
+    newest.setName(name);
+  }, { only: 'coordinator' });
+}
+
+/** Shared pipeline: lines = PDF text lines, infoText = text holding "Report Criteria" and "Groups:". */
+function processReport_(lines, infoText, received, savePdf, options) {
+  options = options || {};
+  const sendEmail = options.sendEmail !== false;
+  const requestedGroups = parseRequestedGroups(infoText);
+
+  const report = parseReport(lines, parseReportDate(infoText) || received);
   if (!Object.keys(report.groups).length || !report.weeks.length) throw new Error('Could not read any groups from the attendance PDF.');
 
-  const target = targetWeekIndex(report, message.getDate());
+  const target = targetWeekIndex(report, received);
   if (target < 0) {
-    throw new Error('The Church Teams report doesn\'t include a column for the Sunday of ' + message.getDate().toDateString() +
+    throw new Error('The Church Teams report doesn\'t include a column for the Sunday of ' + received.toDateString() +
       '. It shows ' + report.weeks[0].label + ' to ' + report.weeks[report.weeks.length - 1].label +
       '. In Church Teams, move the report\'s start date forward so this Sunday fits on the page.');
   }
@@ -142,7 +173,7 @@ function processMessage_(message, options) {
   }
   const reportDate = report.weeks[target].date;
   const dateKey = report.weeks[target].key;
-  savePdf_(pdf, dateKey, message.getDate());
+  savePdf(dateKey);
 
   const roster = loadRoster_();
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
@@ -190,7 +221,7 @@ function processMessage_(message, options) {
       htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
     });
   }
-  if (String(CONFIG.OTHER_RECIPIENTS || '').trim()) {
+  if (options.only !== 'coordinator' && String(CONFIG.OTHER_RECIPIENTS || '').trim()) {
     GmailApp.sendEmail(CONFIG.OTHER_RECIPIENTS, subject, text, {
       htmlBody: buildEmailHtml(result, reportDate, sheetUrl, { hideNameCheck: true }), name: CONFIG.SENDER_NAME
     });
@@ -244,10 +275,9 @@ function parseReportDate(body) {
  */
 function parseRequestedGroups(body) {
   const text = String(body || '').replace(/&#39;|&apos;|&#8216;|&#8217;/g, "'").replace(/[‘’]/g, "'");
-  // The groups line is often wrapped across several lines in the plain-text body
-  const m = /Groups:\s*([\s\S]*?)(?:\n\s*\n|$)/i.exec(text);
-  const line = m ? m[1].replace(/\s*[\r\n]+\s*/g, ' ') : '';
-  const found = line.split(/'\s*,\s*'|,/).map(s => cleanGroup(s.replace(/['"]/g, ''))).filter(Boolean);
+  // Only the quoted list right after "Groups:" — it may wrap across lines, even inside a name
+  const m = /Groups:\s*((?:'[^']*'\s*,?\s*)+)/i.exec(text);
+  const found = m ? (m[1].match(/'[^']*'/g) || []).map(s => cleanGroup(s.slice(1, -1).replace(/\s+/g, ' '))).filter(Boolean) : [];
   const all = found.slice();
   CLASS_GROUPS.forEach(([, groups]) => groups.forEach(g => {
     if (!all.some(x => groupKey(x) === groupKey(g))) all.push(g);
@@ -272,7 +302,7 @@ function parseReport(lines, startDate) {
   // member rows "Last, First | X | | X ...", and a "# of Group Members: N | 17 | 16 ..." totals row.
   // The PDF-to-Doc conversion sometimes turns a row into plain text ("Last, First X X"), losing which
   // column an X was in; those rows are placed afterwards using the per-week totals.
-  const RANGE = /(\d{1,2})\/(\d{1,2})\s*-\s*\d{1,2}\/\d{1,2}/g;
+  const RANGE = /(\d{1,2})\/(\d{1,2})\s*[-\u2013\u2014\u0000]?\s*\d{1,2}\/\d{1,2}(?!\/)/g;
   const pad = n => ('0' + n).slice(-2);
   const groups = {};
   let weekLabels = null;
@@ -293,7 +323,7 @@ function parseReport(lines, startDate) {
     let m;
     RANGE.lastIndex = 0;
     while ((m = RANGE.exec(line))) labels.push(pad(m[1]) + '/' + pad(m[2]));
-    const nameBeforeDates = cells ? first.replace(RANGE, '').trim() : line.slice(0, line.search(/\d{1,2}\/\d{1,2}\s*-/)).trim();
+    const nameBeforeDates = cells ? first.replace(RANGE, '').trim() : line.slice(0, line.search(/\d{1,2}\/\d{1,2}\s*[-\u2013\u2014\u0000]?\s*\d{1,2}\/\d{1,2}/)).trim();
     if (labels.length && nameBeforeDates && nameBeforeDates.indexOf(',') === -1 && nameBeforeDates.indexOf('#') === -1) {
       const name = cleanGroup(nameBeforeDates);
       const key = groupKey(name);
@@ -366,7 +396,11 @@ function parseReport(lines, startDate) {
       const mo = Number(l.slice(0, 2)), day = Number(l.slice(3, 5));
       if (mo < prevMonth) year++;
       prevMonth = mo;
-      weeks.push({ label: l, key: year + '-' + l.slice(0, 2) + '-' + l.slice(3, 5), date: new Date(year, mo - 1, day, 12) });
+      // Church Teams weeks can start on a Saturday ("10/17 - 10/23"); log them under that week's Sunday
+      const start = new Date(year, mo - 1, day, 12);
+      const sunday = new Date(year, mo - 1, day + (7 - start.getDay()) % 7, 12);
+      const key = sunday.getFullYear() + '-' + ('0' + (sunday.getMonth() + 1)).slice(-2) + '-' + ('0' + sunday.getDate()).slice(-2);
+      weeks.push({ label: l, key: key, date: sunday });
     });
   }
   return { weeks: weeks, groups: groups };
