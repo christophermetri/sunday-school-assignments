@@ -234,12 +234,18 @@ function processReport_(lines, infoText, received, savePdf, options) {
  */
 function keepNotFound_(sheet, dateKey, result) {
   if (sheet.getLastRow() < 2) return;
-  const notFound = {};
+  const notFound = {}, logged = {};
+  let anyLogged = false;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getDisplayValues().forEach(r => {
-    if (r[0] === dateKey && r[3] === 'Not found') notFound[r[1] + '|' + normName(r[2])] = true;
+    if (r[0] !== dateKey) return;
+    anyLogged = true;
+    logged[r[1] + '|' + normName(r[2])] = true;
+    if (r[3] === 'Not found') notFound[r[1] + '|' + normName(r[2])] = true;
   });
+  // Servants added to the website (or Church Teams) after that Sunday was logged weren't serving then
   result.classes.forEach(c => c.servants.forEach(s => {
-    if (s.status === 'Absent' && notFound[c.cls + '|' + normName(s.servant)]) s.status = 'Not found';
+    const k = c.cls + '|' + normName(s.servant);
+    if (s.status === 'Absent' && (notFound[k] || (anyLogged && !logged[k]))) s.status = 'Not found';
   }));
 }
 
