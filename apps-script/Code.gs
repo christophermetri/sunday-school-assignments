@@ -290,7 +290,8 @@ function cleanGroup(name) {
 }
 
 function groupKey(name) {
-  return cleanGroup(name).toLowerCase();
+  // Google's PDF conversion sometimes drops spaces ("3rdGrade"), so compare without them
+  return cleanGroup(name).replace(/\s+/g, '').toLowerCase();
 }
 
 /**
@@ -333,12 +334,12 @@ function parseReport(lines, startDate) {
       return;
     }
     if (!current) return;
-    if (/group members/i.test(line)) {
+    if (/group\s*members/i.test(line)) {
       const nums = (line.match(/\d+/g) || []).map(Number);
       if (nums.length > 1) current.counts = nums.slice(1);
       return;
     }
-    if (/%|overall percentage|distinct members/i.test(line)) return;
+    if (/%|overall\s*percentage|distinct\s*members/i.test(line)) return;
 
     let name, present = null, xCount = 0;
     if (cells) {
@@ -526,7 +527,11 @@ function matchScore(siteName, ctName) {
   const p = splitNames_(siteName, ctName);
   if (!p || !p.ctFirst.length) return 0;
   const lastExact = p.ctLast.some(l => p.siteRest.indexOf(l) !== -1);
-  const lastOk = lastExact || p.ctLast.some(l => p.siteRest.some(r => similarWord(l, r)));
+  const ctLastJoined = p.ctLast.join('');
+  // Also tolerate names the PDF conversion glued together, e.g. GhabiousKhirs or ElDeiry
+  const lastOk = lastExact || p.ctLast.some(l => p.siteRest.some(r => similarWord(l, r))) ||
+    p.siteRest.some(r => r.length >= 4 && ctLastJoined.indexOf(r) === 0) ||
+    similarWord(ctLastJoined, p.siteRest.join(''));
   const firstExact = p.siteFirst === p.ctFirst[0];
   const firstOk = firstExact || similarFirst(p.siteFirst, p.ctFirst[0]);
   if (!lastOk || !firstOk) return 0;
@@ -547,13 +552,13 @@ function suggestCtNames(siteName, members) {
     if (parts.length < 2) return;
     const last = parts[0].trim().split(' ');
     const first = parts[1].trim().split(' ')[0];
-    if (similarFirst(site[0], first) || last.some(l => site.slice(1).some(r => similarWord(l, r)))) out[normName(m.name)] = m.name;
+    if (similarFirst(site[0], first) || last.some(l => site.slice(1).some(r => similarWord(l, r)))) out[normName(m.name).replace(/ /g, '')] = m.name;
   });
   return Object.keys(out).map(k => out[k]).slice(0, 3);
 }
 
 function sameCtName(a, b) {
-  return normName(a) === normName(b);
+  return normName(a).replace(/ /g, '') === normName(b).replace(/ /g, '');
 }
 
 /**
@@ -599,8 +604,8 @@ function analyze(report, requestedGroups, roster, fixes) {
       if (!ctName) return { servant: servant, status: 'Not found', ctName: '' };
       return { servant: servant, status: presentAnywhere(ctName) ? 'Present' : 'Absent', ctName: ctName };
     }).filter(Boolean);
-    const used = servants.map(s => normName(s.ctName)).filter(Boolean);
-    const classMembers = allMembers.filter(m => takenKeys.indexOf(m.group) !== -1 && used.indexOf(normName(m.name)) === -1);
+    const used = servants.map(s => normName(s.ctName).replace(/ /g, '')).filter(Boolean);
+    const classMembers = allMembers.filter(m => takenKeys.indexOf(m.group) !== -1 && used.indexOf(normName(m.name).replace(/ /g, '')) === -1);
     servants.filter(s => s.status === 'Not found').forEach(s => { s.suggestions = suggestCtNames(s.servant, classMembers); });
     classes.push({ cls: cls, servants: servants });
   });
@@ -623,7 +628,7 @@ function findCtName(servant, members) {
     const s = matchScore(servant, m.name);
     if (!s) return;
     if (s > best) { best = s; Object.keys(hits).forEach(k => delete hits[k]); }
-    if (s === best) hits[normName(m.name)] = m.name;
+    if (s === best) hits[normName(m.name).replace(/ /g, '')] = m.name;
   });
   const keys = Object.keys(hits);
   return keys.length === 1 ? hits[keys[0]] : null;
