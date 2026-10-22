@@ -296,8 +296,8 @@ function cleanGroup(name) {
 }
 
 function groupKey(name) {
-  // Google's PDF conversion sometimes drops spaces ("3rdGrade"), so compare without them
-  return cleanGroup(name).replace(/\s+/g, '').toLowerCase();
+  // Google's PDF conversion sometimes drops spaces or hyphens ("3rdGrade", "Pre servants"), so ignore them
+  return cleanGroup(name).replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 /**
@@ -315,6 +315,7 @@ function parseReport(lines, startDate) {
   let weekLabels = null;
   let current = null;
   let pendingName = '';
+  let lastMember = null, lastWasText = false;
   const isX = c => /^x$/i.test(String(c).trim());
 
   const pieces = [];
@@ -337,9 +338,19 @@ function parseReport(lines, startDate) {
       if (!weekLabels || labels.length > weekLabels.length) weekLabels = labels;
       current = groups[key] || (groups[key] = { name: name, weeks: labels, members: [], counts: null, unplaced: [] });
       pendingName = '';
+      lastMember = null;
       return;
     }
     if (!current) return;
+    // A line of only X's belongs to the text row just above it ("Micheal, Raphael" then "X X")
+    if (/^(x\s*)+$/i.test(line)) {
+      if (lastMember && lastWasText) {
+        const n = (line.match(/x/gi) || []).length;
+        const open = current.unplaced.find(u => u.member === lastMember);
+        if (open) open.xCount += n; else current.unplaced.push({ member: lastMember, xCount: n });
+      }
+      return;
+    }
     if (/group\s*members/i.test(line)) {
       const nums = (line.match(/\d+/g) || []).map(Number);
       if (nums.length > 1) current.counts = nums.slice(1);
@@ -350,10 +361,13 @@ function parseReport(lines, startDate) {
     let name, present = null, xCount = 0;
     if (cells) {
       name = cells[0];
+      // The first week's X sometimes slides into the name cell ("Riad, Jason X | | X")
+      const firstX = /\s+x$/i.test(name);
+      if (firstX) name = name.replace(/\s+x$/i, '');
       const rest = cells.slice(1);
-      xCount = rest.filter(isX).length;
+      xCount = rest.filter(isX).length + (firstX ? 1 : 0);
       // Extra trailing cells (a date column cut off at the page edge) are ignored
-      if (rest.length >= current.weeks.length) present = current.weeks.map((w, i) => isX(rest[i]));
+      if (rest.length >= current.weeks.length) present = current.weeks.map((w, i) => isX(rest[i]) || (i === 0 && firstX));
     } else {
       const mm = /^(.*?)((?:\s+X)*)\s*$/i.exec(line);
       name = mm[1];
@@ -366,6 +380,8 @@ function parseReport(lines, startDate) {
     if (/,$/.test(name) && !xCount && !present) { pendingName = name; return; }   // "Azab," then "Mckenna"
     const member = { name: name, present: present || current.weeks.map(() => false) };
     current.members.push(member);
+    lastMember = member;
+    lastWasText = !present;
     if (!present && xCount) current.unplaced.push({ member: member, xCount: xCount });
   });
 
