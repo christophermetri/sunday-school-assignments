@@ -162,6 +162,13 @@ function processReport_(lines, infoText, received, savePdf, options) {
   const report = parseReport(lines, parseReportDate(infoText) || received);
   if (!Object.keys(report.groups).length || !report.weeks.length) throw new Error('Could not read any groups from the attendance PDF.');
 
+  const crit = /(\d{1,2}\/\d{1,2}\/\d{4})\s+to\s+(\d{1,2}\/\d{1,2}\/\d{4})/i.exec(infoText || '');
+  if (crit && report.weeks.length === 1) {
+    const a = new Date(crit[1]), b = new Date(crit[2]);
+    if ((b - a) / 86400000 > 7) {
+      throw new Error('The report covers ' + crit[1] + ' to ' + crit[2] + ' but only one week column could be read from the PDF. Nothing was emailed or logged.');
+    }
+  }
   const target = targetWeekIndex(report, received);
   if (target < 0) {
     throw new Error('The Church Teams report doesn\'t include a column for the Sunday of ' + received.toDateString() +
@@ -170,6 +177,11 @@ function processReport_(lines, infoText, received, savePdf, options) {
   }
   if (!weekHasData(report, target)) {
     throw new Error('No one has taken attendance yet for ' + formatLongDate_(report.weeks[target].date) + ' in this Church Teams report.');
+  }
+  const problems = readingProblems(report, target);
+  if (problems.length) {
+    throw new Error('The check-ins read from the PDF for ' + formatLongDate_(report.weeks[target].date) +
+      ' don\'t match the report\'s own totals, so nothing was emailed or logged:\n  ' + problems.join('\n  '));
   }
   const reportDate = report.weeks[target].date;
   const dateKey = report.weeks[target].key;
@@ -184,6 +196,7 @@ function processReport_(lines, infoText, received, savePdf, options) {
   const updates = [];
   for (let i = 0; i < target; i++) {
     if (!weekHasData(report, i)) continue;
+    if (readingProblems(report, i).length) continue;   // don't "correct" a past Sunday from a shaky reading
     const res = analyze(weekView(report, i), requestedGroups, roster, fixes);
     keepNotFound_(historySheet, report.weeks[i].key, res);
     const changed = changedClasses_(historySheet, report.weeks[i].key, res);
@@ -453,6 +466,18 @@ function targetWeekIndex(report, when) {
   const d = new Date(when.getFullYear(), when.getMonth(), when.getDate() - when.getDay(), 12);
   const key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   return report.weeks.findIndex(w => w.key === key);
+}
+
+/** Classes whose check-ins read from the PDF don't add up to the report's own total for that week. */
+function readingProblems(report, i) {
+  const out = [];
+  Object.keys(report.groups).forEach(k => {
+    const g = report.groups[k];
+    if (!g.counts || g.counts[i] == null) return;
+    const read = g.members.filter(m => m.present[i]).length;
+    if (read !== g.counts[i]) out.push(g.name + ': read ' + read + ' check-ins, report total is ' + g.counts[i]);
+  });
+  return out;
 }
 
 function weekHasData(report, i) {
