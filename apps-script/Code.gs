@@ -371,12 +371,15 @@ function parseReport(lines, startDate) {
     }
     if (/%|overall\s*percentage|distinct\s*members/i.test(line)) return;
 
-    let name, present = null, xCount = 0;
+    let name, present = null, xCount = 0, inNameX = 0;
     if (cells) {
       name = cells[0];
       // The first week's X sometimes slides into the name cell ("Riad, Jason X | | X")
       const firstX = /\s+x$/i.test(name);
       if (firstX) name = name.replace(/\s+x$/i, '');
+      // A row split by a page break can carry its X's inside the name ("Amin, X X X Mayan")
+      inNameX = (name.match(/(^|\s)x(?=\s|$)/gi) || []).length;
+      if (inNameX) name = name.replace(/(^|\s)x(?=\s|$)/gi, ' ').replace(/\s+/g, ' ').trim();
       const rest = cells.slice(1);
       xCount = rest.filter(isX).length + (firstX ? 1 : 0);
       // Extra trailing cells (a date column cut off at the page edge) are ignored
@@ -396,6 +399,7 @@ function parseReport(lines, startDate) {
     lastMember = member;
     lastWasText = !present;
     if (!present && xCount) current.unplaced.push({ member: member, xCount: xCount });
+    else if (present && inNameX) current.unplaced.push({ member: member, xCount: inNameX });
   });
 
   // Place X's from rows that lost their columns, using each week's check-in total
@@ -411,8 +415,9 @@ function parseReport(lines, startDate) {
       const open = deficit.map((d, i) => (d > 0 ? i : -1)).filter(i => i >= 0);
       for (let u = 0; u < g.unplaced.length; u++) {
         const row = g.unplaced[u];
-        if (row.xCount === open.length) {
-          open.forEach(i => { row.member.present[i] = true; });
+        const cand = open.filter(i => !row.member.present[i]);
+        if (row.xCount === cand.length) {
+          cand.forEach(i => { row.member.present[i] = true; });
           g.unplaced.splice(u, 1);
           progress = true;
           break;
