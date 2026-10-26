@@ -16,6 +16,7 @@ Every hour it checks the church inbox for the Church Teams scheduled report
 - **History** – one row per servant per week (Present / Absent / Not found).
 - **Name Fixes** – when a servant's name on the website doesn't match Church Teams, add a row:
   website name → Church Teams name exactly as written (`Last, First`). Write `SKIP` to ignore someone who doesn't check in.
+- **Late Check-ins** – when a class takes attendance in Church Teams after the report was emailed, add one row per person who was there: Sunday (yyyy-mm-dd), the Church Teams group, and their Church Teams name. Then run `runLatestReport()` to resend.
 - **Servants** – a copy of the roster from the website (refreshed every run, used as a backup).
 
 ## Changing who gets the email

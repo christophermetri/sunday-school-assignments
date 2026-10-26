@@ -52,6 +52,8 @@ const CLASS_GROUPS = [
 
 const TAB_HISTORY = 'History';
 const TAB_FIXES = 'Name Fixes';
+const TAB_LATE = 'Late Check-ins';
+const LATE_HEADERS = ['Sunday (yyyy-mm-dd)', 'Church Teams group', 'Church Teams name (Last, First)'];
 const TAB_SERVANTS = 'Servants';
 
 /* ============================== Entry points ============================== */
@@ -61,6 +63,7 @@ function setup() {
   ensureTab_(ss, TAB_HISTORY, ['Date', 'Class', 'Servant', 'Status', 'Church Teams name']);
   ensureTab_(ss, TAB_FIXES, ['Servant (as on website)', 'Church Teams name (Last, First) — or SKIP']);
   ensureTab_(ss, TAB_SERVANTS, ['Class', 'Servant']);
+  ensureTab_(ss, TAB_LATE, LATE_HEADERS);
   seedNameFixes_(ss);
   loadRoster_(); // fills the Servants tab
 
@@ -170,6 +173,8 @@ function processReport_(lines, infoText, received, savePdf, options) {
 
   const report = parseReport(lines, parseReportDate(infoText) || received);
   if (!Object.keys(report.groups).length || !report.weeks.length) throw new Error('Could not read any groups from the attendance PDF.');
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  applyLateCheckIns_(report, ss);
 
   const crit = /(\d{1,2}\/\d{1,2}\/\d{4})\s+to\s+(\d{1,2}\/\d{1,2}\/\d{4})/i.exec(infoText || '');
   if (crit && report.weeks.length === 1) {
@@ -197,7 +202,6 @@ function processReport_(lines, infoText, received, savePdf, options) {
   savePdf(dateKey);
 
   const roster = loadRoster_();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const fixes = loadNameFixes_(ss);
   const historySheet = ss.getSheetByName(TAB_HISTORY) || ensureTab_(ss, TAB_HISTORY, ['Date', 'Class', 'Servant', 'Status', 'Church Teams name']);
 
@@ -496,6 +500,26 @@ function parseReport(lines, startDate) {
     });
   }
   return { weeks: weeks, groups: groups };
+}
+
+/**
+ * Check-ins taken in Church Teams after the report was sent, typed on the "Late Check-ins" tab
+ * (Sunday | Church Teams group | Church Teams name). Marks those people present for that Sunday.
+ */
+function applyLateCheckIns_(report, ss) {
+  const sheet = ss.getSheetByName(TAB_LATE) || ensureTab_(ss, TAB_LATE, LATE_HEADERS);
+  if (sheet.getLastRow() < 2) return;
+  const tz = Session.getScriptTimeZone();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(([d, grp, name]) => {
+    const key = d instanceof Date ? Utilities.formatDate(d, tz, 'yyyy-MM-dd') : String(d).trim();
+    const i = report.weeks.findIndex(w => w.key === key);
+    const g = report.groups[groupKey(cleanGroup(String(grp)))];
+    if (i < 0 || !g || !String(name).trim()) return;
+    const m = g.members.find(x => sameCtName(x.name, String(name)));
+    if (!m || m.present[i]) return;
+    m.present[i] = true;
+    if (g.counts && g.counts[i] != null) g.counts[i]++;
+  });
 }
 
 /** Rows whose columns couldn't be worked out count as present (better than a false "absent"). */
