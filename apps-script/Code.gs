@@ -118,6 +118,15 @@ function sendLatestToOtherRecipients() {
   processMessage_(latestReportMessage_(), { only: 'others' });
 }
 
+/** Troubleshooting: saves how Google read the latest report (one line per row) to the Drive folder. */
+function dumpLatestReportLines() {
+  const m = latestReportMessage_();
+  const pdf = m.getAttachments().filter(a => /pdf/i.test(a.getContentType()) || /\.pdf$/i.test(a.getName()))[0];
+  const lines = pdfToLines_(pdf);
+  DriveApp.getFolderById(CONFIG.PDF_FOLDER_ID).createFile('report-lines-debug.json', JSON.stringify(lines), 'text/plain');
+  Logger.log(lines.length + ' lines saved');
+}
+
 /* ============================== Main pipeline ============================== */
 
 function processMessage_(message, options) {
