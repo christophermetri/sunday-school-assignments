@@ -721,7 +721,10 @@ function analyze(report, requestedGroups, roster, fixes) {
 function lookupFix(fixes, servant) {
   const k = normName(servant);
   for (const name in fixes) if (normName(name) === k) return fixes[name];
-  return null;
+  // A shorter name on the tab ("Walaa") still matches the website's fuller one ("Walaa Salib")
+  const words = k.split(' ');
+  const partial = Object.keys(fixes).filter(name => normName(name).split(' ').every(w => words.indexOf(w) !== -1));
+  return partial.length === 1 ? fixes[partial[0]] : null;
 }
 
 function findCtName(servant, members) {
@@ -951,7 +954,10 @@ function loadNameFixes_(ss) {
   const fixes = {};
   if (sheet && sheet.getLastRow() > 1) {
     sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(([site, ct]) => {
-      if (String(site).trim() && String(ct).trim()) fixes[String(site).trim()] = String(ct).trim();
+      site = String(site); ct = String(ct);
+      // Both names pasted into column A ("Dina Samy<tab>Gorgui, Dina")
+      if (!ct.trim() && site.indexOf('\t') !== -1) { const parts = site.split('\t'); site = parts[0]; ct = parts.slice(1).join(' '); }
+      if (site.trim() && ct.trim()) fixes[site.trim()] = ct.trim();
     });
   }
   return fixes;
