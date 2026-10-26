@@ -336,14 +336,29 @@ function parseReport(lines, startDate) {
   const groups = {};
   let weekLabels = null;
   let current = null;
-  let pendingName = '';
+  let pendingName = '', pendingX = 0;
   let lastMember = null, lastWasText = false;
   const isX = c => /^x$/i.test(String(c).trim());
 
   const pieces = [];
   lines.forEach(raw => String(raw).split(/[\n\r\u000b]+/).forEach(p => {
     const s = p.replace(/ /g, ' ').replace(/[ \t]+/g, ' ').trim();
-    if (s) pieces.push(s);
+    if (!s) return;
+    // A week header can come through one date per paragraph ("1st Grade 10/11 - 10/17", "10/18 - 10/24",
+    // "10/25 -", "10/31", ...): glue those pieces back onto the header line.
+    const prev = pieces[pieces.length - 1];
+    const plainPrev = prev && !/[|%#,]/.test(prev);
+    const glue = prev && (
+      // "Pre" + "servants Group 1"
+      /^pre-?$/i.test(prev) ||
+      // header dates one per paragraph, after the group name or an earlier date
+      (plainPrev && /^[\d\/\s\-\u2013\u2014]+$/.test(s) && /\d{1,2}\/\d{1,2}/.test(s) &&
+        (/\d{1,2}\/\d{1,2}\s*[-\u2013\u2014]?\s*$/.test(prev) || /[a-z0-9]\s*$/i.test(prev))) ||
+      (plainPrev && /^\d{1,2}\/\d{1,2}$/.test(s)) ||
+      // "# of Group" + "10 14 13000..." + "Members: 28"
+      (/^#\s*of\s*group/i.test(prev) && prev.indexOf('|') === -1 && !/members:\s*\d+\s*$/i.test(prev) && /^(\d[\d\s]*|members:?\s*\d+)$/i.test(s)));
+    if (glue) { pieces[pieces.length - 1] = prev + ' ' + s; return; }
+    pieces.push(s);
   }));
 
   pieces.forEach(line => {
@@ -359,13 +374,14 @@ function parseReport(lines, startDate) {
       const key = groupKey(name);
       if (!weekLabels || labels.length > weekLabels.length) weekLabels = labels;
       current = groups[key] || (groups[key] = { name: name, weeks: labels, members: [], counts: null, unplaced: [] });
-      pendingName = '';
+      pendingName = ''; pendingX = 0;
       lastMember = null;
       return;
     }
     if (!current) return;
     // A line of only X's belongs to the text row just above it ("Micheal, Raphael" then "X X")
     if (/^(x\s*)+$/i.test(line)) {
+      if (pendingName) { pendingX += (line.match(/x/gi) || []).length; return; }   // "Loka," "X" "Angela"
       if (lastMember && lastWasText) {
         const n = (line.match(/x/gi) || []).length;
         const open = current.unplaced.find(u => u.member === lastMember);
@@ -376,6 +392,21 @@ function parseReport(lines, startDate) {
     if (/group\s*members/i.test(line)) {
       const nums = (line.match(/\d+/g) || []).map(Number);
       if (nums.length > 1) current.counts = nums.slice(1);
+      return;
+    }
+    if (/^#\s*of\s*group/i.test(line) && !cells) {
+      // Totals came through as text: "# of Group 10 14 1300000000 Members: 28" (zeros run together)
+      const total = Number((/members:?\s*(\d+)/i.exec(line) || [])[1] || 0);
+      const counts = [];
+      line.replace(/members:?\s*\d+/i, '').replace(/^#\s*of\s*group/i, '').trim().split(/\s+/).filter(Boolean).forEach(tok => {
+        if (tok.length <= 2 || !/^\d+$/.test(tok)) { counts.push(Number(tok)); return; }
+        // the lead number, then zeros; only trust it when there is one sensible reading
+        const options = [1, 2].filter(n => /^0*$/.test(tok.slice(n)) && Number(tok.slice(0, n)) > 0 && Number(tok.slice(0, n)) <= total);
+        if (options.length !== 1) { counts.push(null); for (let z = 1; z < tok.length - 1; z++) counts.push(0); return; }
+        counts.push(Number(tok.slice(0, options[0])));
+        for (let z = options[0]; z < tok.length; z++) counts.push(0);
+      });
+      if (counts.length) current.counts = counts;
       return;
     }
     if (/%|overall\s*percentage|distinct\s*members/i.test(line)) return;
@@ -392,7 +423,7 @@ function parseReport(lines, startDate) {
       const rest = cells.slice(1);
       xCount = rest.filter(isX).length + (firstX ? 1 : 0);
       // Extra trailing cells (a date column cut off at the page edge) are ignored
-      if (rest.length >= current.weeks.length) present = current.weeks.map((w, i) => isX(rest[i]) || (i === 0 && firstX));
+      if (rest.length && rest.length >= current.weeks.length - 3) present = current.weeks.map((w, i) => isX(rest[i]) || (i === 0 && firstX));
     } else {
       const mm = /^(.*?)((?:\s+X)*)\s*$/i.exec(line);
       name = mm[1];
@@ -400,8 +431,18 @@ function parseReport(lines, startDate) {
       if (current.weeks.length === 1) present = [xCount > 0];
     }
     name = name.replace(/\s+/g, ' ').trim();
-    if (pendingName) { name = (pendingName + ' ' + name).trim(); pendingName = ''; }
-    if (name.indexOf(',') === -1) return;
+    if (pendingName) { name = (pendingName + ' ' + name).trim(); pendingName = ''; xCount += pendingX; pendingX = 0; }
+    if (name.indexOf(',') === -1) {
+      // Rest of a first name that wrapped onto its own line ("Andraous, Adrian" then "Micheal")
+      if (!cells && lastMember && lastWasText && /^[a-z][a-z' .-]*$/i.test(name)) {
+        lastMember.name += ' ' + name;
+        if (xCount) {
+          const open = current.unplaced.find(u => u.member === lastMember);
+          if (open) open.xCount += xCount; else current.unplaced.push({ member: lastMember, xCount: xCount });
+        }
+      }
+      return;
+    }
     if (/,$/.test(name) && !xCount && !present) { pendingName = name; return; }   // "Azab," then "Mckenna"
     const member = { name: name, present: present || current.weeks.map(() => false) };
     current.members.push(member);
@@ -416,11 +457,12 @@ function parseReport(lines, startDate) {
     const g = groups[k];
     g.uncertain = 0;
     if (!g.unplaced.length) return;
-    if (!g.counts || g.counts.length < g.weeks.length) { g.uncertain = g.unplaced.length; markUnplacedPresent_(g); return; }
+    if (!g.counts) { g.uncertain = g.unplaced.length; markUnplacedPresent_(g); return; }
     let progress = true;
     while (g.unplaced.length && progress) {
       progress = false;
-      const deficit = g.weeks.map((w, i) => g.counts[i] - g.members.filter(m => m.present[i]).length);
+      // weeks past the end of a cut-off totals row had no check-ins yet
+      const deficit = g.weeks.map((w, i) => (g.counts[i] == null ? 0 : g.counts[i]) - g.members.filter(m => m.present[i]).length);
       const open = deficit.map((d, i) => (d > 0 ? i : -1)).filter(i => i >= 0);
       for (let u = 0; u < g.unplaced.length; u++) {
         const row = g.unplaced[u];
