@@ -226,7 +226,9 @@ function processReport_(lines, infoText, received, savePdf, options) {
   const columnsLeft = report.weeks.length - 1 - target;
   result.columnsLeft = report.weeks.length > 1 && columnsLeft <= 3 ? columnsLeft : null;
 
-  const alreadyLogged = historyHasDate_(historySheet, dateKey);
+  // "Corrected" only when this Sunday's summary was actually emailed before (not just logged by a run that got cut off)
+  const props = PropertiesService.getScriptProperties();
+  const alreadyLogged = !!props.getProperty('emailed_' + dateKey);
   addStreaks(result, readHistory_(historySheet, dateKey), dateKey);
   writeHistory_(historySheet, dateKey, result);
 
@@ -246,6 +248,7 @@ function processReport_(lines, infoText, received, savePdf, options) {
     GmailApp.sendEmail(CONFIG.EMAIL_TO, subject, text, {
       htmlBody: buildEmailHtml(result, reportDate, sheetUrl), name: CONFIG.SENDER_NAME
     });
+    props.setProperty('emailed_' + dateKey, new Date().toISOString());
   }
   if (options.only !== 'coordinator' && String(CONFIG.OTHER_RECIPIENTS || '').trim()) {
     GmailApp.sendEmail(CONFIG.OTHER_RECIPIENTS, subject, text, {
@@ -1000,17 +1003,20 @@ function readHistory_(sheet, dateKey) {
 }
 
 function writeHistory_(sheet, dateKey, result) {
-  // Remove rows for this date (so re-running a week doesn't double count)
+  // Replace this date's rows in one write (deleting rows one by one is slow enough to hit Google's 6-minute limit)
+  let keep = [];
   if (sheet.getLastRow() > 1) {
-    const dates = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
-    for (let i = dates.length - 1; i >= 0; i--) if (dates[i][0] === dateKey) sheet.deleteRow(i + 2);
+    keep = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getDisplayValues().filter(r => r[0] && r[0] !== dateKey);
   }
   const rows = [];
   result.classes.forEach(c => c.servants.forEach(s => rows.push([dateKey, c.cls, s.servant, s.status, s.ctName])));
-  if (!rows.length) return;
-  const start = sheet.getLastRow() + 1;
-  sheet.getRange(start, 1, rows.length, 1).setNumberFormat('@');
-  sheet.getRange(start, 1, rows.length, 5).setValues(rows);
+  const all = keep.concat(rows);
+  const oldCount = Math.max(sheet.getLastRow() - 1, 0);
+  if (all.length) {
+    sheet.getRange(2, 1, all.length, 1).setNumberFormat('@');
+    sheet.getRange(2, 1, all.length, 5).setValues(all);
+  }
+  if (oldCount > all.length) sheet.getRange(2 + all.length, 1, oldCount - all.length, 5).clearContent();
 }
 
 function ensureTab_(ss, name, headers) {
