@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Advent to Lent Bible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, devotional, encouraging; a daily companion, not a dashboard.
+   IDEA: an illuminated lectionary with a bookshelf that fills as each book is finished.
+   PICTURE: today's reading card under a crimson band, then 73 book spines filling with gold.
+   COLOUR and TYPE: Coptic crimson field, gold for finished, lapis for deuterocanon; Alegreya + Alegreya Sans.
+   LAYOUT: phone-first single column, bottom tab bar; widens to 720px max. */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#130d0f);--ink:light-dark(#1d1416,#f2eae6);--mute:light-dark(#6b5a5d,#b6a5a2);
+--band:light-dark(#7a1828,#3c0f19);--bandink:#fbf1ea;--gold:light-dark(#a87a1f,#dcb257);--goldsoft:light-dark(#f4ead2,#3a2e16);
+--lapis:light-dark(#24427c,#8aa7e3);--ot:light-dark(#7a1828,#d4566b);--line:light-dark(#eadfdc,#33272a);--card:light-dark(#fbf7f6,#1c1417);--red:light-dark(#b3261e,#ff8a80);--ok:light-dark(#2f6b3a,#8fd19b)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 "Alegreya Sans",system-ui,sans-serif;overflow-x:clip;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:Alegreya,Georgia,serif;line-height:1.1;text-wrap:balance;margin:0}
+button{font:inherit;color:inherit}
+.band{background:var(--band);color:var(--bandink);padding:calc(14px + env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 18px max(18px,env(safe-area-inset-left))}
+.wrap{max-width:720px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;opacity:.92}
+.brand svg{width:22px;height:22px;flex:none}
+.prog{margin-top:14px;display:flex;align-items:center;gap:14px}
+.bar{flex:1;height:10px;border-radius:6px;background:rgb(255 255 255/.18);overflow:hidden}
+.bar i{display:block;height:100%;background:#e6c06a;border-radius:6px;transition:width .5s}
+.prog b{font-size:15px;white-space:nowrap}
+.stat{font-size:15px;margin-top:8px;opacity:.95}
+main{padding:18px max(16px,env(safe-area-inset-left)) 24px}
+.view{display:none}.view.on{display:block}
+.dayhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.dayhead h1{font-size:32px;flex:1}
+.nav{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;flex:none}
+.nav:disabled{opacity:.35}
+.sub{color:var(--mute);font-size:15px;margin:0 0 14px}
+.chip{display:inline-block;font-size:14px;padding:3px 10px;border-radius:20px;background:var(--goldsoft);color:var(--ink);margin-right:6px}
+.chip.warn{background:light-dark(#fde7e4,#3d1715);color:var(--red)}
+.chip.ok{background:light-dark(#e3f1e5,#173020);color:var(--ok)}
+.grp{margin:18px 0 6px;font-size:14px;color:var(--mute);font-weight:700}
+.grp.feast{color:var(--band)}:root[data-theme=dark] .grp.feast{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .grp.feast{color:var(--gold)}}
+.row{display:flex;align-items:center;gap:14px;padding:12px 14px;min-height:60px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--card);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.row input{appearance:none;-webkit-appearance:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--mute);flex:none;margin:0;display:grid;place-items:center;cursor:pointer;background:var(--bg)}
+.row input:checked{background:var(--gold);border-color:var(--gold)}
+.row input:checked::after{content:"";width:8px;height:14px;border:solid #fff;border-width:0 3px 3px 0;transform:translateY(-2px) rotate(45deg)}
+.row input:indeterminate::after{content:"";width:12px;height:3px;background:var(--mute);border-radius:2px}
+.row input:focus-visible{outline:3px solid var(--lapis);outline-offset:2px}
+.row .t{font-weight:700;font-size:18px;display:block}
+.row .m{font-size:14px;color:var(--mute)}
+.row.done .t{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--gold)}
+details.intro{border-left:3px solid var(--gold);padding:8px 0 8px 14px;margin:14px 0}
+details.intro summary{cursor:pointer;font-family:Alegreya,serif;font-weight:700;font-size:18px;list-style:none;min-height:30px}
+details.intro summary::-webkit-details-marker{display:none}
+details.intro summary small{font-family:"Alegreya Sans";font-weight:500;color:var(--gold);font-size:14px;margin-left:6px}
+details.intro p{margin:6px 0 0;font-size:16px}
+.feastnote{background:var(--goldsoft);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:16px}
+.feastnote b{font-family:Alegreya,serif;font-size:18px}
+textarea{width:100%;min-height:96px;font:16px/1.5 "Alegreya Sans",sans-serif;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);resize:vertical}
+textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--lapis);outline-offset:2px}
+.btn{min-height:44px;padding:10px 18px;border-radius:22px;border:0;background:var(--band);color:var(--bandink);font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.alert{border:1px solid var(--line);border-radius:14px;padding:14px;margin:6px 0 16px;background:var(--card)}
+.alert p{margin:0 0 10px}
+.plist{list-style:none;margin:0;padding:0}
+.plist h3{font-size:22px;margin:22px 0 8px}
+.pday{display:grid;grid-template-columns:62px minmax(0,1fr) 14px;gap:10px;align-items:center;width:100%;text-align:left;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:none;cursor:pointer;min-height:56px}
+.pday .d{font-size:14px;color:var(--mute);line-height:1.2}.pday .d b{display:block;color:var(--ink);font-size:16px}
+.pday .s{font-size:15px;line-height:1.35}
+.pday .s em{font-style:normal;color:var(--band);font-weight:700}
+.pday.today{background:var(--goldsoft);border-radius:10px}
+.dot{width:12px;height:12px;border-radius:6px;border:2px solid var(--line)}
+.dot.full{background:var(--gold);border-color:var(--gold)}.dot.part{border-color:var(--gold);background:linear-gradient(90deg,var(--gold) 50%,transparent 50%)}.dot.late{border-color:var(--red)}
+.shelf{display:flex;flex-wrap:wrap;align-items:flex-end;gap:3px;padding:12px 10px 0;border-bottom:8px solid light-dark(#8a6a3a,#5a4524);margin-bottom:18px}
+.spine{width:24px;border-radius:3px 3px 0 0;border:1px solid var(--c);background:linear-gradient(to top,var(--c) var(--p),transparent var(--p));cursor:pointer;padding:0;display:flex;align-items:flex-start;justify-content:center;overflow:hidden}
+.spine span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;padding:4px 0;white-space:nowrap;color:var(--ink);font-weight:500}
+.spine.full span{color:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--mute);margin:4px 0 10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ms{list-style:none;padding:0;margin:0}
+.ms li{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:16px}
+.ms li svg{flex:none;width:22px;height:22px}
+.ms li.no{color:var(--mute)}
+.jent{border-bottom:1px solid var(--line);padding:12px 0}
+.jent .d{font-size:14px;color:var(--mute)}
+.jent p{margin:4px 0 0;white-space:pre-wrap}
+.empty{color:var(--mute);padding:20px 0}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;min-height:56px;font-size:13px;color:var(--mute);text-decoration:none}
+.tabs a svg{width:24px;height:24px}
+.tabs a.on{color:var(--band);font-weight:700}
+:root[data-theme=dark] .tabs a.on{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .tabs a.on{color:var(--gold)}}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:22px;font-size:15px;transition:.3s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:rgb(0 0 0/.45);display:none;place-items:center;padding:20px;z-index:10}
+.modal.on{display:grid}
+.modal .box{background:var(--bg);border-radius:18px;padding:22px;max-width:420px;width:100%}
+.modal h2{font-size:26px;margin-bottom:8px}
+.modal .acts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
+.celebrate h2{color:var(--gold)}
+.foot{font-size:13px;color:var(--mute);margin-top:28px}
+.tips p{margin:6px 0}
+h2.sec{font-size:26px;margin:4px 0 6px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="band"><div class="wrap">
+  <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v4.2l2.6-1.6 1.4 2.4L15 8.8V10h1.2l1.8-3 2.4 1.4-1.6 2.6H22v4h-3.2l1.6 2.6-2.4 1.4-1.8-3H15v1.2l3 1.8-1.4 2.4-2.6-1.6V22h-4v-3.2l-2.6 1.6L6 18l3-1.8V15H7.8l-1.8 3-2.4-1.4L5.2 14H2v-4h3.2L3.6 7.4 6 6l1.8 3H9V7.8L6 6l1.4-2.4L10 5.2z"/></svg><span>The whole Bible · Advent to Lent · Nov 26 – Mar 7</span></div>
+  <div class="prog"><div class="bar"><i id="pbar" style="width:0"></i></div><b id="ppct">0%</b></div>
+  <div class="stat" id="pstat"></div>
+</div></header>
+
+<main class="wrap">
+  <section class="view" id="v-today"></section>
+  <section class="view" id="v-plan"></section>
+  <section class="view" id="v-shelf"></section>
+  <section class="view" id="v-journal"></section>
+  <p class="foot" id="sync">Saving on this device.</p>
+</main>
+
+<nav class="tabs" aria-label="Sections">
+  <a href="#today" data-v="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z"/><path d="M12 6v14"/></svg>Today</a>
+  <a href="#plan" data-v="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plan</a>
+  <a href="#shelf" data-v="shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V6h3v14M9 20V4h3v16M14 20l2-14 3 .5-2 13.5M3 20h18"/></svg>Shelf</a>
+  <a href="#journal" data-v="journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11l3 3v15H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Journal</a>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="box" id="mbox"></div></div>
+
+<script>
+{
+const BOOKS=[["GEN","Genesis","Gen","OT",[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26]],["EXO","Exodus","Exod","OT",[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38]],["LEV","Leviticus","Lev","OT",[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34]],["NUM","Numbers","Num","OT",[54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13]],["DEU","Deuteronomy","Deut","OT",[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12]],["JOS","Joshua","Josh","OT",[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33]],["JDG","Judges","Judg","OT",[36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25]],["RUT","Ruth","Ruth","OT",[22,23,18,22]],["1SA","1 Samuel","1 Sam","OT",[28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,44,25,12,25,11,31,13]],["2SA","2 Samuel","2 Sam","OT",[27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25]],["1KI","1 Kings","1 Kgs","OT",[53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53]],["2KI","2 Kings","2 Kgs","OT",[18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30]],["1CH","1 Chronicles","1 Chr","OT",[54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30]],["2CH","2 Chronicles","2 Chr","OT",[17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23]],["EZR","Ezra","Ezra","OT",[11,70,13,24,17,22,28,36,15,44]],["NEH","Nehemiah","Neh","OT",[11,20,32,23,19,19,73,18,38,39,36,47,31]],["TOB","Tobit","Tob","DC",[22,14,17,21,22,17,18,21,6,12,19,22,18,15]],["JDT","Judith","Jdt","DC",[16,28,10,15,24,21,32,36,14,23,23,20,20,19,14,25]],["EST","Esther","Esth","OT",[22,23,15,17,14,14,10,17,32,3,12,6,18,19,16,24]],["1MA","1 Maccabees","1 Macc","DC",[64,70,60,61,68,63,50,32,73,89,74,53,53,49,41,24]],["2MA","2 Maccabees","2 Macc","DC",[36,32,40,50,27,31,42,36,29,38,38,45,26,46,39]],["JOB","Job","Job","OT",[22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17]],["PSA","Psalms","Ps","OT",[6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,6,8,8,3,18,3,3,21,26,9,8,24,13,10,7,12,15,21,10,20,14,9,6,7]],["PRO","Proverbs","Prov","OT",[33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,27,33,31]],["ECC","Ecclesiastes","Eccl","OT",[18,26,22,16,20,12,29,17,18,20,10,14]],["SNG","Song of Songs","Song","OT",[17,17,11,16,16,13,13,14]],["WIS","Wisdom","Wis","DC",[16,24,19,20,23,25,30,21,18,21,26,27,19,31,19,29,21,25,22]],["SIR","Sirach","Sir","DC",[30,18,31,31,15,37,36,19,18,31,34,18,26,27,20,30,32,33,30,32,28,27,28,34,26,29,30,26,28,25,31,31,33,26,26,31,31,34,35,30,27,25,33,23,26,20,25,25,16,29,30]],["ISA","Isaiah","Isa","OT",[31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24]],["JER","Jeremiah","Jer","OT",[19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34]],["LAM","Lamentations","Lam","OT",[22,22,66,22,22]],["BAR","Baruch","Bar","DC",[22,35,38,37,9,72]],["EZK","Ezekiel","Ezek","OT",[28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35]],["DAN","Daniel","Dan","OT",[21,49,97,37,31,28,28,27,27,21,45,13,64,42]],["HOS","Hosea","Hos","OT",[11,23,5,19,15,11,16,14,17,15,12,14,16,9]],["JOL","Joel","Joel","OT",[20,32,21]],["AMO","Amos","Amos","OT",[15,16,15,13,27,14,17,14,15]],["OBA","Obadiah","Obad","OT",[21]],["JON","Jonah","Jonah","OT",[17,10,10,11]],["MIC","Micah","Mic","OT",[16,13,12,13,15,16,20]],["NAM","Nahum","Nah","OT",[15,13,19]],["HAB","Habakkuk","Hab","OT",[17,20,19]],["ZEP","Zephaniah","Zeph","OT",[18,15,20]],["HAG","Haggai","Hag","OT",[15,23]],["ZEC","Zechariah","Zech","OT",[21,13,10,14,11,15,14,23,17,12,17,14,9,21]],["MAL","Malachi","Mal","OT",[14,17,18,6]],["MAT","Matthew","Matt","NT",[25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20]],["MRK","Mark","Mark","NT",[45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20]],["LUK","Luke","Luke","NT",[80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53]],["JHN","John","John","NT",[51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25]],["ACT","Acts","Acts","NT",[26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,41,38,40,30,35,27,27,32,44,31]],["ROM","Romans","Rom","NT",[32,29,31,25,21,23,25,39,33,21,36,21,14,23,33,27]],["1CO","1 Corinthians","1 Cor","NT",[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24]],["2CO","2 Corinthians","2 Cor","NT",[24,17,18,18,21,18,16,24,15,18,33,21,14]],["GAL","Galatians","Gal","NT",[24,21,29,31,26,18]],["EPH","Ephesians","Eph","NT",[23,22,21,32,33,24]],["PHP","Philippians","Phil","NT",[30,30,21,23]],["COL","Colossians","Col","NT",[29,23,25,18]],["1TH","1 Thessalonians","1 Thess","NT",[10,20,13,18,28]],["2TH","2 Thessalonians","2 Thess","NT",[12,17,18]],["1TI","1 Timothy","1 Tim","NT",[20,15,16,16,25,21]],["2TI","2 Timothy","2 Tim","NT",[18,26,17,22]],["TIT","Titus","Titus","NT",[16,15,15]],["PHM","Philemon","Phlm","NT",[25]],["HEB","Hebrews","Heb","NT",[14,18,19,16,14,20,28,13,28,39,40,29,25]],["JAS","James","Jas","NT",[27,26,18,17,20]],["1PE","1 Peter","1 Pet","NT",[25,25,22,19,14]],["2PE","2 Peter","2 Pet","NT",[21,22,18]],["1JN","1 John","1 John","NT",[10,29,24,21,21]],["2JN","2 John","2 John","NT",[13]],["3JN","3 John","3 John","NT",[14]],["JUD","Jude","Jude","NT",[25]],["REV","Revelation","Rev","NT",[20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21]]];
+const START=Date.UTC(2026,10,26), ND=102, DAY=864e5;
+const BK={};BOOKS.forEach((b,i)=>BK[b[0]]={k:b[0],n:b[1],s:b[2],t:b[3],v:b[4],i});
+const V=id=>{const p=id.split('.');return BK[p[0]].v[p[1]-1]};
+const bookOf=id=>id.split('.')[0], chOf=id=>+id.split('.')[1];
+const chIds=k=>BK[k].v.map((_,i)=>k+'.'+(i+1));
+const toIdx=s=>{const[y,m,d]=s.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-START)/DAY)};
+const dateOf=i=>new Date(START+i*DAY);
+const fmt=(i,o)=>dateOf(i).toLocaleDateString(undefined,Object.assign({timeZone:'UTC'},o));
+const todayIdx=()=>{const n=new Date();return Math.round((Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())-START)/DAY)};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const BLOCKS=[
+["Obadiah + Jude",["OBA"],["JUD"],"The shortest book of the Old Testament beside one of the shortest of the New. Both warn against pride and against those who turn on God's people, and both end in hope."],
+["Philemon, 2 John + 3 John",[],["PHM","2JN","3JN"],"Three one-page personal letters. Paul asks a master to welcome back a runaway slave \"as a beloved brother\"; St. John writes about truth, love and hospitality."],
+["Joel + 2 Peter",["JOL"],["2PE"],"Both look toward the Day of the Lord. Joel's \"I will pour out My Spirit on all flesh\" is the text St. Peter preaches at Pentecost; 2 Peter explains why the Lord seems slow to return."],
+["Zephaniah + 2 Thessalonians",["ZEP"],["2TH"],"The Day of the Lord again: Zephaniah's \"great day\" of judgment, which ends with God rejoicing over His people with singing, and St. Paul calming a church that thought the day had already come."],
+["Nahum",["NAM"],[],"The sequel to Jonah, about a century later. Nineveh repented once; now it falls. You'll read Jonah itself during Jonah's Fast in February."],
+["Habakkuk + Galatians",["HAB"],["GAL"],"Habakkuk argues with God and is told \"the just shall live by his faith\" (2:4). St. Paul builds Galatians on that very line (3:11)."],
+["Ruth + Ephesians",["RUT"],["EPH"],"A Moabite widow is welcomed into Israel and becomes great-grandmother of King David. Ephesians tells how Gentiles who were \"far off\" are brought near in Christ."],
+["Song of Songs + 1 John",["SNG"],["1JN"],"The Fathers read the Song as the love between Christ and His Church, and between God and the soul. 1 John gives the key: \"God is love.\""],
+["Ecclesiastes + Philippians",["ECC"],["PHP"],"\"Vanity of vanities\" beside \"to live is Christ, and to die is gain.\" The Preacher searches for meaning under the sun; St. Paul, writing from prison, has found it."],
+["Tobit + 1 Thessalonians",["TOB"],["1TH"],"A family story of almsgiving, prayer, burying the dead, holy marriage and the archangel Raphael. 1 Thessalonians shares its hope for those who have fallen asleep."],
+["Wisdom + Colossians",["WIS"],["COL"],"Wisdom calls God's Wisdom \"the brightness of the everlasting light, the image of His goodness\" (7:26); Colossians calls Christ \"the image of the invisible God\" (1:15). Notice Wisdom 2, the righteous one plotted against."],
+["Ezra + Nehemiah",["EZR","NEH"],[],"Home from exile: rebuilding the temple, then the walls, then the people. Watch for prayer and fasting, and the public reading of the Law in Nehemiah 8."],
+["Judith + Esther",["JDT","EST"],[],"Two women who risked everything to save their people. Esther 11–16 here are the Greek additions with the prayers of Mordecai and Esther; if your Bible prints them as lettered sections inside the chapters, read them where they fall."],
+["Leviticus + 1 Peter",["LEV"],["1PE"],"\"Be holy, for I am holy\" (Lev 11:44) is quoted in 1 Peter 1:16, and Leviticus's priesthood is the background for Peter's \"royal priesthood.\" Leviticus is where most plans stall: read for what each law shows about God's holiness, not every detail."],
+["Hosea, Amos, Micah + James",["HOS","AMO","MIC"],["JAS"],"Three prophets of the 8th century BC: Hosea's faithful love for an unfaithful wife, Amos's cry for justice, Micah's \"do justly, love mercy, walk humbly\" and his Bethlehem prophecy (5:2). James carries the same fire: faith without works is dead."],
+["Haggai, Zechariah, Malachi + Mark",["HAG","ZEC","MAL"],["MRK"],"The last prophets before four hundred years of silence. Malachi ends promising Elijah's return; Mark opens right there, with St. John the Baptist. Zechariah's king \"lowly, riding on a donkey\" (9:9) meets you again in the Passion."],
+["1 & 2 Maccabees",["1MA","2MA"],[],"Faithfulness under Antiochus, the rededication of the temple (the feast Christ keeps in John 10:22), and the mother and her seven martyred sons in 2 Maccabees 7, remembered in Hebrews 11:35."],
+["Joshua + Acts",["JOS"],["ACT"],"Israel crosses the Jordan and takes the land; the Church goes out \"to the end of the earth.\" Joshua and Jesus are the same name."],
+["Judges",["JDG"],[],"A cycle that keeps repeating: sin, oppression, crying out, deliverance. \"Everyone did what was right in his own eyes.\""],
+["Numbers + 1 Corinthians",["NUM"],["1CO"],"Forty years in the wilderness. St. Paul retells these very events in 1 Corinthians 10: \"they drank of that spiritual Rock that followed them, and that Rock was Christ.\""],
+["Job + 2 Corinthians",["JOB"],["2CO"],"Job's suffering and his friends' wrong answers, beside Paul's \"God of all comfort,\" treasure in earthen vessels, and strength made perfect in weakness. Job's speeches are poetry: try reading them aloud."],
+["Exodus + John",["EXO"],["JHN"],"The Passover lamb, the burning bush's \"I AM,\" manna from heaven. St. John answers each: \"Behold the Lamb of God,\" \"Before Abraham was, I AM,\" \"I am the bread of life.\" The Word \"tabernacled\" among us (1:14) explains Exodus's long tabernacle chapters."],
+["Deuteronomy + Matthew",["DEU"],["MAT"],"Moses' farewell sermons. Christ answers each temptation with Deuteronomy and gives His own sermon on a mountain. You read Matthew 1–2 on the Feast of the Nativity."],
+["Sirach + 1 & 2 Timothy, Titus",["SIR"],["1TI","2TI","TIT"],"Ben Sira's practical wisdom on speech, friendship, money, family and honoring parents and priests, beside St. Paul's letters on ordering the Church's daily life."],
+["Genesis + Romans",["GEN"],["ROM"],"Creation, the fall and the patriarchs. Romans reads Genesis closely: Adam (Rom 5) and Abraham, who \"believed God, and it was accounted to him for righteousness\" (Rom 4)."],
+["1 & 2 Samuel",["1SA","2SA"],[],"Samuel, Saul and David: the shepherd boy who becomes king, his fall, and his repentance. Psalm 51 belongs to 2 Samuel 12."],
+["1 & 2 Kings",["1KI","2KI"],[],"Solomon's temple, the divided kingdom, Elijah and Elisha, and the long road to exile."],
+["1 & 2 Chronicles",["1CH","2CH"],[],"The same history retold after the exile from the temple's point of view. The genealogies of 1 Chronicles 1–9 can be read briskly."],
+["Jeremiah, Lamentations, Baruch + Hebrews",["JER","LAM","BAR"],["HEB"],"Jeremiah's new covenant (31:31–34) is the longest Old Testament passage quoted in the New, in Hebrews 8. Lamentations mourns Jerusalem; Baruch 6 is the Letter of Jeremiah."],
+["Isaiah + Luke",["ISA"],["LUK"],"Isaiah is called the fifth Gospel: the virgin with child, the suffering servant of chapter 53. In Luke 4 Christ reads Isaiah 61 and says \"Today this Scripture is fulfilled.\" You read Luke 1–3 at Nativity and Theophany."],
+["Ezekiel, Daniel + Revelation",["EZK","DAN"],["REV"],"Visions to finish on: Ezekiel's glory, dry bones and the river from the temple; Daniel's furnace, lions' den and Son of Man; Revelation's new heaven and new earth. Daniel 13 is Susanna and 14 is Bel and the Dragon; some Bibles place them elsewhere."]
+].map(([n,ot,nt,why])=>({n,ot,nt,why}));
+
+const ANCHORS=[
+{d:'2027-01-07',label:'Feast of the Nativity',note:'Christ is born! Today\'s readings are the two Nativity accounts, set aside from Matthew and Luke for this day.',ids:['MAT.1','MAT.2','LUK.1','LUK.2']},
+{d:'2027-01-19',label:'Feast of Theophany',note:'The baptism of Christ in the Jordan, and the voice of the Father: "You are My beloved Son."',ids:['LUK.3']},
+{d:'2027-02-22',label:"Jonah's Fast, day 1",note:'The three-day fast of Nineveh. Jonah is read across the fast, one part each day.',ids:['JON.1']},
+{d:'2027-02-23',label:"Jonah's Fast, day 2",note:'Jonah\'s prayer from the belly of the fish, which Christ calls the sign of His three days in the tomb (Matt 12:40).',ids:['JON.2']},
+{d:'2027-02-24',label:"Jonah's Fast, day 3",note:'Nineveh repents, and God shows mercy, even to Jonah.',ids:['JON.3','JON.4']}];
+const ANCH=new Set(ANCHORS.flatMap(a=>a.ids));
+
+const MAIN=[],BLK={};
+BLOCKS.forEach((b,bi)=>{
+  const side=ks=>ks.flatMap(chIds).filter(id=>!ANCH.has(id));
+  const A=side(b.ot),B=side(b.nt),sum=a=>a.reduce((s,id)=>s+V(id),0)||1,tA=sum(A),tB=sum(B);
+  let i=0,j=0,rA=0,rB=0;
+  while(i<A.length||j<B.length){
+    const a=j>=B.length||(i<A.length&&(rA+V(A[i])/2)/tA<=(rB+V(B[j])/2)/tB);
+    const id=a?A[i++]:B[j++]; a?rA+=V(id):rB+=V(id); MAIN.push(id); BLK[id]=bi;
+  }
+});
+const PS=chIds('PSA'),PR=chIds('PRO');
+const ALL=BOOKS.flatMap(b=>chIds(b[0]));
+
+function schedule(from,main,ps,pr,anc){
+  const D=ND-from,days=Array.from({length:D},(_,k)=>({i:from+k,an:[],feast:[],main:[],ps:[],pr:[]}));
+  if(D<=0)return [];
+  ps.forEach((id,j)=>days[Math.min(D-1,Math.floor((j+0.5)*D/ps.length))].ps.push(id));
+  days.forEach((x,d)=>{const k=x.ps.indexOf('PSA.119');if(k<0||x.ps.length<2)return;
+    const bef=x.ps.slice(0,k),aft=x.ps.slice(k+1);x.ps=['PSA.119'];
+    if(d>0)days[d-1].ps.push(...bef);else x.ps.unshift(...bef);
+    if(d<D-1)days[d+1].ps.unshift(...aft);else x.ps.push(...aft)});
+  pr.forEach((id,j)=>days[Math.min(D-1,Math.floor((j+0.5)*D/pr.length))].pr.push(id));
+  anc.forEach(a=>{const d=toIdx(a.d)-from;if(d>=0&&d<D){days[d].an.push(...a.ids);days[d].feast.push(a)}});
+  const vs=a=>a.reduce((s,id)=>s+V(id),0);
+  const fixed=days.map(x=>vs(x.an)+vs(x.ps)+vs(x.pr)),total=fixed.reduce((a,b)=>a+b,0)+vs(main);
+  let cum=0,p=0;
+  days.forEach((x,d)=>{cum+=fixed[d];const T=total*(d+1)/D;
+    while(p<main.length&&(d===D-1||cum+V(main[p])/2<=T)){x.main.push(main[p]);cum+=V(main[p]);p++}});
+  return days;
+}
+
+let S={done:{},journal:{},respreads:[],seen:[],u:0};
+const KEY='advent-to-lent-bible-v1';
+try{const t=localStorage.getItem(KEY);if(t)S=Object.assign(S,JSON.parse(t))}catch(e){}
+let PLAN=[],BASE=[];
+function computePlan(){
+  BASE=schedule(0,MAIN,PS,PR,ANCHORS);let plan=BASE;
+  for(const r of S.respreads){
+    const dn=new Set(r.done),f=r.from;if(f<=0||f>=ND)continue;
+    const pastA=ANCHORS.filter(a=>toIdx(a.d)<f).flatMap(a=>a.ids).filter(id=>!dn.has(id));
+    const futA=ANCHORS.filter(a=>toIdx(a.d)>=f).map(a=>Object.assign({},a,{ids:a.ids.filter(id=>!dn.has(id))})).filter(a=>a.ids.length);
+    plan=plan.slice(0,f).concat(schedule(f,pastA.concat(MAIN.filter(id=>!dn.has(id))),PS.filter(id=>!dn.has(id)),PR.filter(id=>!dn.has(id)),futA));
+  }
+  PLAN=plan;
+}
+const dayIds=x=>x.an.concat(x.main,x.ps,x.pr);
+const isDone=id=>!!S.done[id];
+const bookDone=k=>chIds(k).every(isDone);
+const booksDone=()=>BOOKS.filter(b=>bookDone(b[0])).length;
+const NATIVITY=(()=>{const b=schedule(0,MAIN,PS,PR,ANCHORS),seen={};b.slice(0,toIdx('2027-01-07')+1).forEach(x=>dayIds(x).forEach(id=>seen[id]=1));return BOOKS.filter(bk=>chIds(bk[0]).every(id=>seen[id])).length})();
+const MILES=[[1,'Your first book is finished'],[10,'Ten books finished'],[25,'Twenty-five books finished'],[NATIVITY,'Nativity goal: '+NATIVITY+' books'],[50,'Fifty books finished'],[60,'Sixty books finished'],[73,'The whole Bible!']];
+
+function ranges(ids){
+  const by={},order=[];ids.forEach(id=>{const k=bookOf(id);if(!by[k]){by[k]=[];order.push(k)}by[k].push(chOf(id))});
+  const out=[];order.forEach(k=>{const cs=by[k].sort((a,b)=>a-b);let s=cs[0],e=cs[0];
+    const push=()=>{const n=BK[k].v.length;out.push({k,s,e,ids:Array.from({length:e-s+1},(_,q)=>k+'.'+(s+q)),label:n===1?BK[k].n:BK[k].n+' '+(s===e?s:s+'–'+e),short:n===1?BK[k].s:BK[k].s+' '+(s===e?s:s+'–'+e)})};
+    for(let q=1;q<cs.length;q++){if(cs[q]===e+1)e=cs[q];else{push();s=e=cs[q]}}push()});
+  return out;
+}
+const mainR=x=>ranges(x.main).sort((a,b)=>(BLK[a.ids[0]]-BLK[b.ids[0]])||((BK[a.k].t==='NT')-(BK[b.k].t==='NT')));
+const vsum=ids=>ids.reduce((s,id)=>s+V(id),0);
+const today=()=>todayIdx();
+let viewDay=Math.max(0,Math.min(ND-1,today()));
+
+function status(){
+  const t=today();let due=0,late=0,ahead=0;
+  PLAN.forEach(x=>dayIds(x).forEach(id=>{if(x.i<t){due++;if(!isDone(id))late++}else if(isDone(id))ahead++}));
+  const per=ALL.length/ND;return{t,late,ahead,lateDays:Math.ceil(late/per)};
+}
+function header(){
+  const n=ALL.filter(isDone).length,pct=Math.round(n/ALL.length*100),b=booksDone(),st=status();
+  document.getElementById('pbar').style.width=(n/ALL.length*100)+'%';
+  document.getElementById('ppct').textContent=pct+'%';
+  let msg=b+' of 73 books finished · '+n+' of '+ALL.length+' chapters';
+  if(st.t<0)msg+=' · begins Thursday, Nov 26';
+  document.getElementById('pstat').textContent=msg;
+}
+function rowHTML(r,sub){
+  const d=r.ids.filter(isDone).length,all=d===r.ids.length;
+  return `<label class="row${all?' done':''}"><input type="checkbox" data-ids="${r.ids.join(' ')}"${all?' checked':''}${d&&!all?' data-ind="1"':''} aria-label="${esc(r.label)}"><span><span class="t">${esc(r.label)}</span><span class="m">${sub||((r.ids.length>1?r.ids.length+' chapters · ':'')+vsum(r.ids)+' verses')}</span></span></label>`;
+}
+function renderToday(){
+  const x=PLAN[viewDay],t=today(),st=status(),ids=dayIds(x),left=ids.filter(id=>!isDone(id)).length;
+  let h=`<div class="dayhead"><button class="nav" id="prev" aria-label="Previous day"${viewDay<=0?' disabled':''}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 5l-7 7 7 7"/></svg></button><h1>${esc(fmt(viewDay,{weekday:'long',month:'long',day:'numeric'}))}</h1><button class="nav" id="next" aria-label="Next day"${viewDay>=ND-1?' disabled':''}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button></div>`;
+  h+=`<p class="sub">Day ${viewDay+1} of ${ND}${viewDay===t?' · today':viewDay<t?'':' · coming up'} · about ${vsum(ids)} verses &nbsp;${left?`<span class="chip">${left} chapter${left>1?'s':''} left</span>`:`<span class="chip ok">Done</span>`}</p>`;
+  if(t<0&&viewDay===0)h+=`<div class="feastnote"><b>Starts Thursday, November 26.</b><br>Each day has a main reading, a few Psalms, and every third day or so a chapter of Proverbs. The small books come first, so you'll finish a lot of books in the first week. Tap a reading to check it off.</div>`;
+  if(viewDay===t&&st.late>0)h+=`<div class="alert"><p><span class="chip warn">${st.late} chapters behind</span> About ${st.lateDays} day${st.lateDays>1?'s':''} of reading. Catch up when you can, or spread what's left evenly over the remaining days.</p><button class="btn" data-act="respread">Re-spread the rest</button></div>`;
+  x.feast.forEach(a=>{h+=`<div class="feastnote"><b>${esc(a.label)}</b><br>${esc(a.note)}</div>`;h+=ranges(a.ids).map(r=>rowHTML(r)).join('')});
+  if(x.an.length&&!x.feast.length)h+=`<div class="grp feast">Set-aside feast readings</div>`+ranges(x.an).map(r=>rowHTML(r)).join('');
+  if(x.main.length){h+=`<div class="grp">Main reading</div>`+mainR(x).map(r=>rowHTML(r)).join('')}
+  if(x.ps.length||x.pr.length){h+=`<div class="grp">Psalms${x.pr.length?' & Proverbs':''}</div>`+ranges(x.ps).map(r=>rowHTML(r,r.ids.includes('PSA.119')?'176 verses · a day to itself':'')).join('')+ranges(x.pr).map(r=>rowHTML(r)).join('')}
+  const bl=[...new Set(x.main.map(id=>BLK[id]).filter(b=>b!=null))];
+  bl.forEach(bi=>{const first=PLAN.findIndex(d=>d.main.some(id=>BLK[id]===bi)),last=PLAN.length-1-[...PLAN].reverse().findIndex(d=>d.main.some(id=>BLK[id]===bi));
+    const tag=first===viewDay?'begins today':last===viewDay?'finishes today':'';
+    h+=`<details class="intro"${first===viewDay?' open':''}><summary>${esc(BLOCKS[bi].n)}${tag?`<small>${tag}</small>`:''}</summary><p>${esc(BLOCKS[bi].why)}</p></details>`});
+  const dd=dateOf(viewDay),key=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')+'-'+String(dd.getUTCDate()).padStart(2,'0');
+  h+=`<div class="grp">A verse or thought from today</div><textarea id="jtext" data-key="${key}" placeholder="Write down one verse that stood out, or a sentence about what you read."></textarea>`;
+  const el=document.getElementById('v-today');el.innerHTML=h;
+  el.querySelectorAll('input[data-ind]').forEach(i=>i.indeterminate=true);
+  document.getElementById('jtext').value=S.journal[key]||'';
+}
+function daySummary(x){
+  return ranges(x.an).concat(mainR(x),ranges(x.ps),ranges(x.pr)).map(r=>r.short).join(' · ');
+}
+function renderPlan(){
+  const st=status();let h=`<h2 class="sec">The plan</h2><p class="sub">${ND} days, ${ALL.length} chapters, about ${Math.round(ALL.length/ND)} a day, balanced by length. Tap a day to open it.</p>`;
+  if(st.t>=0&&st.t<ND){
+    h+=`<div class="alert"><p>${st.late?`<span class="chip warn">${st.late} chapters behind</span>`:st.ahead?`<span class="chip ok">${st.ahead} chapters ahead</span>`:`<span class="chip ok">On track</span>`}</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="respread">Re-spread from today</button>${S.respreads.length?'<button class="btn ghost" data-act="undo">Undo last re-spread</button>':''}</div></div>`;
+  }
+  let month='';h+='<div class="plist">';
+  PLAN.forEach(x=>{const m=fmt(x.i,{month:'long',year:'numeric'});if(m!==month){month=m;h+=`<h3>${esc(m)}</h3>`}
+    const ids=dayIds(x),d=ids.filter(isDone).length,cls=d===ids.length?'full':d?'part':x.i<st.t?'late':'';
+    h+=`<button class="pday${x.i===st.t?' today':''}" data-day="${x.i}"><span class="d"><b>${esc(fmt(x.i,{month:'short',day:'numeric'}))}</b>${esc(fmt(x.i,{weekday:'short'}))} · ${x.i+1}</span><span class="s">${x.feast.length?`<em>${esc(x.feast[0].label)}</em> · `:''}${esc(daySummary(x))}</span><span class="dot ${cls}"></span></button>`});
+  h+=`</div><div class="tips"><h3 style="font-size:22px;margin:26px 0 6px">Tips</h3><p><b>Put it on your home screen.</b> Open this page's claude.ai link in Safari or Chrome and choose Share, then Add to Home Screen. It opens like an app.</p><p><b>Set a daily alarm</b> for your reading time. A fixed time matters more than anything else.</p><p><b>Reading with others?</b> Share this page from claude.ai. Each person's checkmarks and journal are private to them; they need Contributor access to save progress.</p><p><b>Esther, Daniel and Baruch</b> follow the chapter numbering of Bibles that print the Greek additions as chapters (Esther 11–16, Daniel 13–14, Baruch 6 as the Letter of Jeremiah). Daniel 3 includes the Song of the Three Young Men.</p></div>`;
+  document.getElementById('v-plan').innerHTML=h;
+}
+const COL={OT:'var(--ot)',DC:'var(--lapis)',NT:'var(--gold)'};
+function renderShelf(){
+  const b=booksDone();
+  let h=`<h2 class="sec">Your shelf</h2><p class="sub">${b} of 73 books finished. Each spine fills as you read; tap one for its progress.</p><div class="legend"><span><i style="background:var(--ot)"></i>Old Testament</span><span><i style="background:var(--lapis)"></i>Deuterocanon</span><span><i style="background:var(--gold)"></i>New Testament</span></div>`;
+  const shelf=t=>`<div class="shelf">${BOOKS.filter(x=>t?x[3]==='NT':x[3]!=='NT').map(x=>{const ids=chIds(x[0]),d=ids.filter(isDone).length,p=Math.round(d/ids.length*100),ht=Math.round(46+Math.min(110,Math.sqrt(ids.length)*12));
+    return `<button class="spine${p===100?' full':''}" data-book="${x[0]}" style="height:${ht}px;--c:${COL[x[3]]};--p:${p}%" aria-label="${esc(x[1])}: ${d} of ${ids.length} chapters"><span>${esc(x[2])}</span></button>`}).join('')}</div>`;
+  h+=shelf(0)+shelf(1);
+  h+=`<h3 style="font-size:22px;margin:8px 0 4px">Milestones</h3><ul class="ms">`;
+  const nt=BOOKS.filter(x=>x[3]==='NT').every(x=>bookDone(x[0])),half=ALL.filter(isDone).length>=ALL.length/2;
+  const tick=on=>on?'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="var(--gold)"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.6" fill="none"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--line)" stroke-width="2"/></svg>';
+  const list=MILES.map(([n,t])=>[b>=n,t]).concat([[nt,'All 27 New Testament books'],[half,'Halfway: '+Math.ceil(ALL.length/2)+' chapters']]);
+  h+=list.map(([on,t])=>`<li class="${on?'':'no'}">${tick(on)}${esc(t)}</li>`).join('')+'</ul>';
+  h+=`<p class="sub" style="margin-top:12px">On schedule you'll have finished ${NATIVITY} books by the Feast of the Nativity on January 7.</p>`;
+  document.getElementById('v-shelf').innerHTML=h;
+}
+function renderJournal(){
+  const ks=Object.keys(S.journal).filter(k=>S.journal[k]&&S.journal[k].trim()).sort().reverse();
+  let h=`<h2 class="sec">Journal</h2><p class="sub">${ks.length} entr${ks.length===1?'y':'ies'}. Add one from any day's page.</p>`;
+  if(ks.length)h+=`<button class="btn ghost" data-act="copy">Copy all entries</button>`;
+  h+=ks.length?ks.map(k=>{const i=toIdx(k),x=PLAN[i];return `<div class="jent"><div class="d">${esc(i>=0&&i<ND?fmt(i,{weekday:'short',month:'short',day:'numeric'})+' · '+daySummary(x):k)}</div><p>${esc(S.journal[k])}</p></div>`}).join(''):`<p class="empty">Nothing yet. On each day's page there's a box for a verse or a thought.</p>`;
+  document.getElementById('v-journal').innerHTML=h;
+}
+function route(){
+  let v=(location.hash||'#today').slice(1);if(!['today','plan','shelf','journal'].includes(v))v='today';
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  document.querySelectorAll('.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  header();({today:renderToday,plan:renderPlan,shelf:renderShelf,journal:renderJournal})[v]();
+}
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
+function modal(html){const m=document.getElementById('modal');document.getElementById('mbox').innerHTML=html;m.classList.add('on');const b=m.querySelector('button');b&&b.focus()}
+function closeModal(){document.getElementById('modal').classList.remove('on')}
+
+let db=null,ref=null,writing=false,again=false,wt;
+function save(){S.u=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}clearTimeout(wt);wt=setTimeout(push,700)}
+async function push(){if(!ref)return;if(writing){again=true;return}writing=true;
+  try{await ref.set(JSON.parse(JSON.stringify(S)));setSync('Saved to your Claude account, so it follows you across devices.')}catch(e){setSync('Saving on this device only right now.')}
+  writing=false;if(again){again=false;push()}}
+function setSync(m){document.getElementById('sync').textContent=m}
+
+function toggle(ids,on){
+  const before=new Set(BOOKS.filter(b=>bookDone(b[0])).map(b=>b[0])),bc=before.size;
+  ids.forEach(id=>{if(on)S.done[id]=1;else delete S.done[id]});
+  const fin=BOOKS.filter(b=>bookDone(b[0])&&!before.has(b[0])),ac=booksDone();
+  save();
+  const ms=MILES.find(([n])=>bc<n&&ac>=n&&!S.seen.includes(n));
+  if(ms){S.seen.push(ms[0]);save();modal(`<div class="celebrate"><h2>${esc(ms[1])}</h2><p>${ms[0]===73?'You have read the whole Bible, every book, from Advent to Lent. Glory to God.':'You\'ve finished '+ac+' of 73 books'+(fin.length?', most recently '+esc(fin[fin.length-1][1]):'')+'. Keep going.'}</p><div class="acts"><button class="btn" data-act="close">Continue</button></div></div>`)}
+  else if(fin.length)toast('Finished '+fin.map(b=>b[1]).join(', ')+' · '+ac+' of 73 books');
+  route();
+}
+
+document.addEventListener('change',e=>{const i=e.target.closest('input[data-ids]');if(i)toggle(i.dataset.ids.split(' '),i.checked)});
+let jt;document.addEventListener('input',e=>{if(e.target.id==='jtext'){S.journal[e.target.dataset.key]=e.target.value;clearTimeout(jt);jt=setTimeout(save,600)}});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.id==='prev'&&viewDay>0){viewDay--;renderToday();scrollTo(0,0)}
+  else if(t.id==='next'&&viewDay<ND-1){viewDay++;renderToday();scrollTo(0,0)}
+  else if(t.dataset.day){viewDay=+t.dataset.day;location.hash='today';route();scrollTo(0,0)}
+  else if(t.dataset.book){const k=t.dataset.book,ids=chIds(k),d=ids.filter(isDone).length;const nx=PLAN.find(x=>dayIds(x).some(id=>bookOf(id)===k&&!isDone(id)));toast(BK[k].n+': '+d+' of '+ids.length+' chapters'+(d<ids.length&&nx?' · next on '+fmt(nx.i,{month:'short',day:'numeric'}):''))}
+  const a=t.dataset.act;if(!a)return;
+  if(a==='close')closeModal();
+  else if(a==='respread'){const st=status(),f=Math.max(1,st.t),left=ALL.filter(id=>!isDone(id)).length,days=ND-f;
+    modal(`<h2>Re-spread the rest?</h2><p>Your ${left} remaining chapters will be spread evenly over the ${days} days from ${esc(fmt(f,{month:'long',day:'numeric'}))} to March 7, about ${Math.round(left/days)} a day. Days already passed stay as they were, and feast-day readings stay on their feasts.</p><div class="acts"><button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="dorespread">Re-spread</button></div>`)}
+  else if(a==='dorespread'){const f=Math.max(1,today());S.respreads.push({from:f,done:Object.keys(S.done)});save();computePlan();closeModal();viewDay=Math.min(ND-1,f);route();toast('Plan re-spread from '+fmt(f,{month:'short',day:'numeric'}))}
+  else if(a==='undo'){S.respreads.pop();save();computePlan();route();toast('Last re-spread undone')}
+  else if(a==='copy'){const ks=Object.keys(S.journal).filter(k=>S.journal[k].trim()).sort();const txt=ks.map(k=>{const i=toIdx(k);return (i>=0&&i<ND?fmt(i,{weekday:'short',month:'short',day:'numeric'})+' ('+daySummary(PLAN[i])+')':k)+'\n'+S.journal[k]}).join('\n\n');
+    navigator.clipboard.writeText(txt).then(()=>toast('Journal copied')).catch(()=>toast('Copy isn\'t available here'))}
+});
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+window.addEventListener('hashchange',route);
+
+computePlan();route();
+
+(async()=>{try{
+  const cl=window.claude;if(!cl||!cl.use)return;
+  const [d,u]=await Promise.all([cl.use('db'),cl.use('user')]);if(!d||!u)return;
+  const id=await u.id();if(!id)return;db=d;ref=db.doc('data/users/'+id+'/state');
+  const snap=await ref.get();
+  if(snap.exists){const r=snap.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();route()}else if((S.u||0)>(r.u||0))push()}
+  else if(S.u)push();
+  setSync('Saved to your Claude account, so it follows you across devices.');
+  ref.onSnapshot(s=>{if(!s.exists||s.metadata.hasPendingWrites)return;const r=s.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();if(document.activeElement&&document.activeElement.id==='jtext')header();else route()}},()=>{});
+}catch(e){setSync('Saving on this device only right now.')}})();
+}
+</script>
+</body>
+</html>
