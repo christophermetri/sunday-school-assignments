@@ -45,7 +45,11 @@ main{padding:18px max(16px,env(safe-area-inset-left)) 24px}
 .grp{margin:18px 0 6px;font-size:14px;color:var(--mute);font-weight:700}
 .grp.feast{color:var(--band)}:root[data-theme=dark] .grp.feast{color:var(--gold)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .grp.feast{color:var(--gold)}}
-.row{display:flex;align-items:center;gap:14px;padding:12px 14px;min-height:60px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--card);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.row{padding:12px 14px;min-height:60px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--card);-webkit-tap-highlight-color:transparent}
+.rl{display:flex;align-items:center;gap:14px;min-height:36px;cursor:pointer}
+.chs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px 42px}
+.ch{min-width:44px;height:44px;padding:0 8px;border-radius:22px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ch[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#fff}
 .row input{appearance:none;-webkit-appearance:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--mute);flex:none;margin:0;display:grid;place-items:center;cursor:pointer;background:var(--bg)}
 .row input:checked{background:var(--gold);border-color:var(--gold)}
 .row input:checked::after{content:"";width:8px;height:14px;border:solid #fff;border-width:0 3px 3px 0;transform:translateY(-2px) rotate(45deg)}
@@ -270,7 +274,9 @@ function header(){
 }
 function rowHTML(r,sub){
   const d=r.ids.filter(isDone).length,all=d===r.ids.length;
-  return `<label class="row${all?' done':''}"><input type="checkbox" data-ids="${r.ids.join(' ')}"${all?' checked':''}${d&&!all?' data-ind="1"':''} aria-label="${esc(r.label)}"><span><span class="t">${esc(r.label)}</span><span class="m">${sub||((r.ids.length>1?r.ids.length+' chapters · ':'')+vsum(r.ids)+' verses')}</span></span></label>`;
+  const many=r.ids.length>1,m=many&&d&&!all?d+' of '+r.ids.length+' chapters read':(sub||((many?r.ids.length+' chapters · ':'')+vsum(r.ids)+' verses'));
+  const chs=many?`<div class="chs" role="group" aria-label="${esc(r.label)} by chapter">${r.ids.map(id=>`<button class="ch" data-ch="${id}" aria-pressed="${isDone(id)}" aria-label="${esc(BK[bookOf(id)].n)} ${chOf(id)}">${chOf(id)}</button>`).join('')}</div>`:'';
+  return `<div class="row${all?' done':''}"><label class="rl"><input type="checkbox" data-ids="${r.ids.join(' ')}"${all?' checked':''}${d&&!all?' data-ind="1"':''} aria-label="${esc(r.label)}, all chapters"><span><span class="t">${esc(r.label)}</span><span class="m">${m}</span></span></label>${chs}</div>`;
 }
 function renderToday(){
   const x=PLAN[viewDay],t=today(),st=status(),ids=dayIds(x),left=ids.filter(id=>!isDone(id)).length;
@@ -361,6 +367,7 @@ document.addEventListener('change',e=>{const i=e.target.closest('input[data-ids]
 let jt;document.addEventListener('input',e=>{if(e.target.id==='jtext'){S.journal[e.target.dataset.key]=e.target.value;clearTimeout(jt);jt=setTimeout(save,600)}});
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.ch){const id=t.dataset.ch;toggle([id],!isDone(id));const b=document.querySelector(`[data-ch="${id}"]`);b&&b.focus({preventScroll:true});return}
   if(t.id==='prev'&&viewDay>0){viewDay--;renderToday();scrollTo(0,0)}
   else if(t.id==='next'&&viewDay<ND-1){viewDay++;renderToday();scrollTo(0,0)}
   else if(t.dataset.day){viewDay=+t.dataset.day;location.hash='today';route();scrollTo(0,0)}
