@@ -226,7 +226,7 @@ function schedule(from,main,ps,pr,anc){
   return days;
 }
 
-let S={done:{},journal:{},respreads:[],seen:[],u:0};
+let S={done:{},journal:{},respreads:[],seen:[],log:{},u:0};
 const KEY='advent-to-lent-bible-v1';
 try{const t=localStorage.getItem(KEY);if(t)S=Object.assign(S,JSON.parse(t))}catch(e){}
 let PLAN=[],BASE=[];
@@ -257,6 +257,10 @@ function ranges(ids){
 const mainR=x=>ranges(x.main).sort((a,b)=>(BLK[a.ids[0]]-BLK[b.ids[0]])||((BK[a.k].t==='NT')-(BK[b.k].t==='NT')));
 const vsum=ids=>ids.reduce((s,id)=>s+V(id),0);
 const today=()=>todayIdx();
+const keyOf=i=>{const dd=dateOf(i);return dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')+'-'+String(dd.getUTCDate()).padStart(2,'0')};
+const mins=v=>v?Math.max(5,Math.round(v/7/5)*5):0;
+function backfill(){if(!S.log||typeof S.log!=='object')S.log={};if(Object.keys(S.log).length||!Object.keys(S.done).length)return false;const t=today();PLAN.forEach(x=>{if(x.i<=t&&dayIds(x).some(isDone))S.log[keyOf(x.i)]=1});return true}
+function streak(){const t=today();let i=S.log[keyOf(t)]?t:t-1,s=0;while(S.log[keyOf(i)]){s++;i--}return s}
 let viewDay=Math.max(0,Math.min(ND-1,today()));
 
 function status(){
@@ -268,7 +272,8 @@ function header(){
   const n=ALL.filter(isDone).length,pct=Math.round(n/ALL.length*100),b=booksDone(),st=status();
   document.getElementById('pbar').style.width=(n/ALL.length*100)+'%';
   document.getElementById('ppct').textContent=pct+'%';
-  let msg=b+' of 73 books finished · '+n+' of '+ALL.length+' chapters';
+  const sk=streak();
+  let msg=(sk?sk+'-day streak · ':'')+b+' of 73 books · '+n+' of '+ALL.length+' chapters';
   if(st.t<0)msg+=' · begins Wednesday, Nov 25';
   document.getElementById('pstat').textContent=msg;
 }
@@ -281,9 +286,8 @@ function rowHTML(r,sub){
 function renderToday(){
   const x=PLAN[viewDay],t=today(),st=status(),ids=dayIds(x),left=ids.filter(id=>!isDone(id)).length;
   let h=`<div class="dayhead"><button class="nav" id="prev" aria-label="Previous day"${viewDay<=0?' disabled':''}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 5l-7 7 7 7"/></svg></button><h1>${esc(fmt(viewDay,{weekday:'long',month:'long',day:'numeric'}))}</h1><button class="nav" id="next" aria-label="Next day"${viewDay>=ND-1?' disabled':''}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button></div>`;
-  h+=`<p class="sub">Day ${viewDay+1} of ${ND}${viewDay===t?' · today':viewDay<t?'':' · coming up'} · about ${vsum(ids)} verses &nbsp;${left?`<span class="chip">${left} chapter${left>1?'s':''} left</span>`:`<span class="chip ok">Done</span>`}</p>`;
+  h+=`<p class="sub">Day ${viewDay+1} of ${ND}${viewDay===t?' · today':viewDay<t?'':' · coming up'} · about ${mins(vsum(ids))} min &nbsp;${left?`<span class="chip">${left} chapter${left>1?'s':''} left${left<ids.length?' · ~'+mins(vsum(ids.filter(id=>!isDone(id))))+' min':''}</span>`:`<span class="chip ok">Done</span>`}${viewDay===t&&st.late>0?` <span class="chip warn">${st.late} behind</span>`:''}</p>`;
   if(t<0&&viewDay===0)h+=`<div class="feastnote"><b>Starts Wednesday, November 25.</b><br>Each day has a main reading, a few Psalms, and every third day or so a chapter of Proverbs. The small books come first, so you'll finish a lot of books in the first week. Tap a reading to check it off.</div>`;
-  if(viewDay===t&&st.late>0)h+=`<div class="alert"><p><span class="chip warn">${st.late} chapters behind</span> About ${st.lateDays} day${st.lateDays>1?'s':''} of reading. Catch up when you can, or spread what's left evenly over the remaining days.</p><button class="btn" data-act="respread">Re-spread the rest</button></div>`;
   x.feast.forEach(a=>{h+=`<div class="feastnote"><b>${esc(a.label)}</b><br>${esc(a.note)}</div>`;h+=ranges(a.ids).map(r=>rowHTML(r)).join('')});
   if(x.an.length&&!x.feast.length)h+=`<div class="grp feast">Set-aside feast readings</div>`+ranges(x.an).map(r=>rowHTML(r)).join('');
   if(x.main.length){h+=`<div class="grp">Main reading</div>`+mainR(x).map(r=>rowHTML(r)).join('')}
@@ -309,7 +313,7 @@ function renderPlan(){
   let month='';h+='<div class="plist">';
   PLAN.forEach(x=>{const m=fmt(x.i,{month:'long',year:'numeric'});if(m!==month){month=m;h+=`<h3>${esc(m)}</h3>`}
     const ids=dayIds(x),d=ids.filter(isDone).length,cls=d===ids.length?'full':d?'part':x.i<st.t?'late':'';
-    h+=`<button class="pday${x.i===st.t?' today':''}" data-day="${x.i}"><span class="d"><b>${esc(fmt(x.i,{month:'short',day:'numeric'}))}</b>${esc(fmt(x.i,{weekday:'short'}))} · ${x.i+1}</span><span class="s">${x.feast.length?`<em>${esc(x.feast[0].label)}</em> · `:''}${esc(daySummary(x))}</span><span class="dot ${cls}"></span></button>`});
+    h+=`<button class="pday${x.i===st.t?' today':''}" data-day="${x.i}"><span class="d"><b>${esc(fmt(x.i,{month:'short',day:'numeric'}))}</b>${esc(fmt(x.i,{weekday:'short'}))} · ${mins(vsum(dayIds(x)))} min</span><span class="s">${x.feast.length?`<em>${esc(x.feast[0].label)}</em> · `:''}${esc(daySummary(x))}</span><span class="dot ${cls}"></span></button>`});
   h+=`</div><div class="tips"><h3 style="font-size:22px;margin:26px 0 6px">Tips</h3><p><b>Put it on your home screen.</b> Open this page's claude.ai link in Safari or Chrome and choose Share, then Add to Home Screen. It opens like an app.</p><p><b>Set a daily alarm</b> for your reading time. A fixed time matters more than anything else.</p><p><b>Reading with others?</b> Share this page from claude.ai. Each person's checkmarks and journal are private to them; they need Contributor access to save progress.</p><p><b>Esther, Daniel and Baruch</b> follow the chapter numbering of Bibles that print the Greek additions as chapters (Esther 11–16, Daniel 13–14, Baruch 6 as the Letter of Jeremiah). Daniel 3 includes the Song of the Three Young Men.</p></div>`;
   document.getElementById('v-plan').innerHTML=h;
 }
@@ -355,6 +359,7 @@ function setSync(m){document.getElementById('sync').textContent=m}
 function toggle(ids,on){
   const before=new Set(BOOKS.filter(b=>bookDone(b[0])).map(b=>b[0])),bc=before.size;
   ids.forEach(id=>{if(on)S.done[id]=1;else delete S.done[id]});
+  if(on)S.log[keyOf(today())]=1;
   const fin=BOOKS.filter(b=>bookDone(b[0])&&!before.has(b[0])),ac=booksDone();
   save();
   const ms=MILES.find(([n])=>bc<n&&ac>=n&&!S.seen.includes(n));
@@ -384,17 +389,17 @@ document.addEventListener('click',e=>{
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 window.addEventListener('hashchange',route);
 
-computePlan();route();
+computePlan();if(backfill())save();route();
 
 (async()=>{try{
   const cl=window.claude;if(!cl||!cl.use)return;
   const [d,u]=await Promise.all([cl.use('db'),cl.use('user')]);if(!d||!u)return;
   const id=await u.id();if(!id)return;db=d;ref=db.doc('data/users/'+id+'/state');
   const snap=await ref.get();
-  if(snap.exists){const r=snap.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();route()}else if((S.u||0)>(r.u||0))push()}
+  if(snap.exists){const r=snap.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],log:{},u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();backfill();route()}else if((S.u||0)>(r.u||0))push()}
   else if(S.u)push();
   setSync('Saved to your Claude account, so it follows you across devices.');
-  ref.onSnapshot(s=>{if(!s.exists||s.metadata.hasPendingWrites)return;const r=s.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();if(document.activeElement&&document.activeElement.id==='jtext')header();else route()}},()=>{});
+  ref.onSnapshot(s=>{if(!s.exists||s.metadata.hasPendingWrites)return;const r=s.data()||{};if((r.u||0)>(S.u||0)){S=Object.assign({done:{},journal:{},respreads:[],seen:[],log:{},u:0},JSON.parse(JSON.stringify(r)));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}computePlan();backfill();if(document.activeElement&&document.activeElement.id==='jtext')header();else route()}},()=>{});
 }catch(e){setSync('Saving on this device only right now.')}})();
 }
 </script>
